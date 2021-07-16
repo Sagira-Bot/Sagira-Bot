@@ -39,8 +39,9 @@ namespace Sagira_Bot
         /// Of course basically every item is limited to a single apostraphe, so it's a bit superfluous to iterate over the entire string to double every instance of an apostraphe, but in the off chance an item with multiple ever gets added, this'll cover it. 
         /// </summary>
         /// <param name="itemName">item name, either partial or exact</param>
+        /// <param name="Year">Year mode. 0 = Ignore year, pull any matches. 1 = Year 1 only. 2 = Year 2 only. </param>
         /// <returns>JSON entries of items whose name contain itemName</returns>
-        public List<ItemData> PullItemByName(string itemName, bool Year2 = true)
+        public List<ItemData> PullItemByName(string itemName, int Year = 0)
         {
             if (itemName.Contains("'"))
             {
@@ -62,11 +63,11 @@ namespace Sagira_Bot
                 {
                     foreach (string itemVersion in itemList)
                     {
-                        if (itemVersion.Contains("randomizedPlugSetHash") && Year2)
+                        if (itemVersion.Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
                         {
                             resultingItems.Add(ParseItem(itemVersion));
                         }
-                        else if (!(itemVersion.Contains("randomizedPlugSetHash")) && !Year2) //If no random perks and you only want year 1 (aka non-year2)
+                        else if (!(itemVersion.Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1)) //If no random perks and you only want year 1 (aka non-year2)
                         {
                             resultingItems.Add(ParseItem(itemVersion));
                         }
@@ -81,16 +82,34 @@ namespace Sagira_Bot
             else
             {
                 itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE lower(json) like '%\"name\":\"%{itemName.ToLower()}%\"%' AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0");
-                string RegexPattern = $".*\"name\":\"[a-z ]*{itemName.ToLower()}[a-z ]*\".*";
-                for (int i = 0; i < itemList.Count; i++)
+                //string RegexPattern = $".*\"name\":\"[a-z ]*{itemName.ToLower()}[a-z ]*\".*";
+                if(itemList.Count > 0)
                 {
-                    ItemData deserialize = ParseItem(itemList[i]);
-                    if (deserialize.DisplayProperties.Name.ToLower().Contains(itemName.ToLower()))
+                    if(itemList.Count > 1)
                     {
-                        resultingItems.Add(deserialize);
+                        for (int i = 0; i < itemList.Count; i++)
+                        {
+                            ItemData deserialize = ParseItem(itemList[i]);
+                            if (deserialize.DisplayProperties.Name.ToLower().Contains(itemName.ToLower()))
+                            {
+                                if (itemList[i].Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
+                                {
+                                    resultingItems.Add(deserialize);
+                                }
+                                else if (!(itemList[i].Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1))
+                                {
+                                    resultingItems.Add(deserialize);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        resultingItems.Add(ParseItem(itemList[0]));
                     }
                 }
-                return resultingItems; //Any item whose name strictly contains a substring that is our item name.Exact matches are prioritized and returned without these substring-holding entries.
+
+                return resultingItems; //Any item whose name strictly contains a substring that is our item name. Exact matches are prioritized and returned without these substring-holding entries. This could be empty.
             }
 
         }
@@ -196,6 +215,49 @@ namespace Sagira_Bot
             }
             return perkHashes;
         }
+
+        public List<ItemData>[] PullCuratedRoll(ItemData item)
+        {
+            List<ItemData>[] perkHashes = new List<ItemData>[6];
+            //List<long>[] perkHashes = new List<long>[5];
+            int curIdx = 0;
+            perkHashes[curIdx] = new List<ItemData>();
+            perkHashes[curIdx++].Add(item);
+            foreach (SocketEntry perk in item.Sockets.SocketEntries)
+            {
+                if ((perk.PlugSources == 2 || perk.PlugSources == 6) && perk.ReusablePlugSetHash != 3)
+                {
+                    perkHashes[curIdx] = new List<ItemData>();
+                    if(perk.ReusablePlugItems.Length == 0 && perk.SingleInitialItemHash != 0)
+                    {
+                        perkHashes[curIdx].Add(ParseItem(PullItemFromHash(perk.SingleInitialItemHash)));
+                    }
+                    else
+                    {
+                        foreach(ReusablePlugItem hash in perk.ReusablePlugItems)
+                        {
+                            perkHashes[curIdx].Add(ParseItem(PullItemFromHash(hash.PlugItemHash)));
+                        }
+                    }
+                    curIdx++;
+                }
+                    
+            }
+            for (int i = 1; i < perkHashes.Length; i++) //Use perkHashes as a reference to how many columns we have. i.e if 3 columns. +1 so we can also account for the item in our first index.
+            {
+                if(perkHashes[i] != null)
+                {
+                    bungie.DebugLog($"CURATED COLUMN {i}: ", bungie.LogFile);
+                    foreach (ItemData perk in perkHashes[i])
+                    {
+                        bungie.DebugLog($"{perk.DisplayProperties.Name}, ", bungie.LogFile);
+                    }
+                    bungie.DebugLog("", bungie.LogFile);
+                }
+
+            }
+            return perkHashes;
+        }
         /// <summary>
         /// Encapsulated workflow that takes an item name and generates a list of the perks available for that item per slot. 
         /// Need to add consideration for static rolled items (i.e blues, exotics, y1, etc.)
@@ -203,11 +265,11 @@ namespace Sagira_Bot
         /// </summary>
         /// <param name="itemName">Name of the Item you're trying to look up</param>
         /// <returns>Array of List objects. [0] will always be the original item. Every index i past 0 will be the list of available perks in the item's ith column.</returns>
-        public List<ItemData> GenerateItemList(string itemName, bool Year2 = true)
+        public List<ItemData> GenerateItemList(string itemName, int Year = 0)
         {
             try
             {
-                List<ItemData> items = PullItemByName(itemName, Year2);
+                List<ItemData> items = PullItemByName(itemName, Year);
                 if(items.Count == 0)
                 {
                     bungie.DebugLog($"Could not find desired item: {itemName}", bungie.LogFile);
@@ -237,11 +299,12 @@ namespace Sagira_Bot
         {
 
             List<long?> hashes;
+            List<ItemData>[] curatedRoll; 
             if ((item.Inventory.TierTypeName == "Legendary" && item.DisplaySource.ToLower().Contains("random perks")) || RandomExotics.ContainsKey(item.DisplayProperties.Name.ToLower()))
             {
                 bungie.DebugLog($"Y2 Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
                 hashes = PullRandomizedPerkHash(item);
-                //pullCurated too 
+                curatedRoll = PullCuratedRoll(item);
             }
             else
             {

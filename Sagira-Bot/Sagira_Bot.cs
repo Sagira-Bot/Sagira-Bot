@@ -9,7 +9,7 @@ namespace Sagira_Bot
         {
             //SampleBitMapEdit();
             Sagira sagira = new Sagira();
-            List<ItemData> ItemList = sagira.GenerateItemList("Thorn", false);
+            List<ItemData> ItemList = sagira.GenerateItemList("Midnight");
             List<ItemData>[] PerkColumns = sagira.GeneratePerkColumns(ItemList[0]);
 
         }
