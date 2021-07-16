@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Linq;
 using System.Text;
 using System.Net;
 using System.Threading.Tasks;
@@ -29,9 +30,8 @@ namespace Sagira_Bot
         const string BaseURL2 = "https://www.bungie.net/Platform"; //Most api calls hit /Platform, so this is a good candidate for baseURL if their web api is necessary down the road.
         const string DbDir = "./ManifestDB/"; //Doesn't matter - change if you care
         readonly string ApiKey; //Api Key to be loaded from .env file. Format of file is KEY=VALUE so APIKEY=YOURKEYHERE
-        readonly string LogFile; //Combination of 2 env variables. Combines LOG=LOGFILENAME and LOGDIR=LOGFOLDERNAME. Same format as above in .env file, just pass in the name of the log, in my case it's "DEBUG.log" and "Logs"
         readonly IDictionary<string, string> envs; //Envs returns to an IDictionary. 
-
+        public readonly string LogFile = ""; //Combination of 2 env variables. Combines LOG=LOGFILENAME and LOGDIR=LOGFOLDERNAME. Same format as above in .env file, just pass in the name of the log, in my case it's "DEBUG.log" and "Logs"
         /// <summary>
         /// Generic Constructor. Loads all envs from .env file (hidden from git, but put it in the same directory as your binaries. KEY=VALUE format, KEYs are all the mentioned associative indexes below i.e "APIKEY" for your Api Key)
         /// Empties logs/Creates necessary directories. Pulls the URL of the english db from Bungie's manifest page, then downloads the manifest db and initializes it for usage by Sagira object. 
@@ -73,9 +73,9 @@ namespace Sagira_Bot
         /// </summary>
         /// <param name="Query">SQL Query string</param>
         /// <returns>result of the query</returns>
-        public string QueryDB(string Query)
+        public List<string> QueryDB(string Query, bool Debug = false)
         {
-            string result = "";
+            List<string> Results = new List<string>();
             try
             {
                 DebugLog($"Attempting to query db with: {Query}", LogFile);
@@ -86,17 +86,21 @@ namespace Sagira_Bot
                 {
                     while (reader.Read()) //While still getting results, progress until results are exhausted.
                     {
-                        result = reader.GetString(0); //Assign first result to return value.
+                       Results.Add(reader.GetString(0));
+                       if(Debug)
+                        DebugLog(reader.GetString(0), LogFile);
+
                     }
                 }
             }
             catch (Exception e)
             {
-                result = $"Failed to execute query: {Query}\nDue to error: {e}"; //Log any errors with query
+                Results = new List<string>();
+                Results.Add($"Failed to execute query: {Query}\nDue to error: {e}"); //Log any errors with query
             }
             //DebugLog(result, LogFile);
             //DB.Close();
-            return result;
+            return Results;
         }
 
         /// <summary>
@@ -106,6 +110,8 @@ namespace Sagira_Bot
         /// <param name="fileName">resulting file name to be written to</param>
         private void PullManifest(string URL, string fileName)
         {
+            if (File.Exists(fileName))
+                File.Delete(fileName); //Delete existing manifest.zip
             if (DownloadFile(URL, fileName))
             {
                 DebugLog("Finished Downloading Manifest", LogFile);
@@ -144,7 +150,7 @@ namespace Sagira_Bot
         /// </summary>
         /// <param name="URL">URL from our Base URL to download file from</param>
         /// <param name="fileName">Name of the file we'll be generating</param>
-        /// <returns></returns>
+        /// <returns>True if download file completed, false if not</returns>
         private bool DownloadFile(string URL, string fileName)
         {
             DebugLog("Starting "+fileName+" Download", LogFile);
@@ -193,7 +199,7 @@ namespace Sagira_Bot
         /// </summary>
         /// <param name="data">Debug info to write</param>
         /// <param name="LogName">Log file to write to</param>
-        private void DebugLog(string data, string LogName)
+        public void DebugLog(string data, string LogName)
         {
             Console.WriteLine(data);
             using StreamWriter w = File.AppendText(LogName);
@@ -213,6 +219,25 @@ namespace Sagira_Bot
                     fs.SetLength(0);
                 }
             }
+        }
+
+        [SQLiteFunction(Name = "REGEXP", Arguments = 2, FuncType = FunctionType.Scalar)]
+        public class RegExSQLiteFunction : SQLiteFunction
+        {
+            public override object Invoke(object[] args)
+            {
+                return System.Text.RegularExpressions.Regex.IsMatch(Convert.ToString(args[1]), Convert.ToString(args[0]));
+            }
+        }
+
+        public void BindLiteFunction(SQLiteConnection connection, SQLiteFunction function)
+        {
+            var attributes = function.GetType().GetCustomAttributes(typeof(SQLiteFunctionAttribute), true).Cast<SQLiteFunctionAttribute>().ToArray();
+            if (attributes.Length == 0)
+            {
+                throw new InvalidOperationException("SQLiteFunction doesn't have SQLiteFunctionAttribute");
+            }
+            connection.BindFunction(attributes[0], function);
         }
     }
 }
