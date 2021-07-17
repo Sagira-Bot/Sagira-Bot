@@ -18,6 +18,8 @@ Assuming prefix = !
 * SagiraBot -> Discord Bot instance
 * SagiraModule -> Actual Module that uses DI to utilize Sagira Object's DB functionalities. 
 
+# Setup
+The only particular thing to note about the setup is that you need to put a .env file in your binaries folder (or edit the Env.Load calls to point to wherever you want your env file).
 Format of that file: Plaintext file with each of these entries on their own lines.
 
 * APIKEY=
