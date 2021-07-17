@@ -48,6 +48,7 @@ namespace Sagira_Bot
         public List<ItemData> PullItemByName(string itemName, int Year = 0)
         {
             //Sql queries would stop if a single quote is included, so we double up on quotes to escape them
+            string originalName = itemName;
             if (itemName.Contains("'"))
             {
                 string doubleSingleQuote = "";
@@ -76,13 +77,13 @@ namespace Sagira_Bot
                         if (itemVersion.Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
                         {
                             curItem.Year = 2;
-                            Targets[curItem.DisplayProperties.Name] = curItem;
+                            Targets[curItem.DisplayProperties.Name.ToLower()] = curItem;
                         }
                         else if (!(itemVersion.Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1)) //If no random perks and you only want year 1 (aka non-year2)
                         {
-                            if(!(Targets.ContainsKey(curItem.DisplayProperties.Name) || (Targets.ContainsKey(curItem.DisplayProperties.Name) && Targets[curItem.DisplayProperties.Name].Year == 1))){
+                            if(!(Targets.ContainsKey(curItem.DisplayProperties.Name.ToLower()) || (Targets.ContainsKey(curItem.DisplayProperties.Name.ToLower()) && Targets[curItem.DisplayProperties.Name.ToLower()].Year == 1))){
                                 curItem.Year = 1;
-                                Targets[curItem.DisplayProperties.Name] = curItem;
+                                Targets[curItem.DisplayProperties.Name.ToLower()] = curItem;
                             }
                         }
                     }
@@ -104,6 +105,7 @@ namespace Sagira_Bot
             else
             {
                 //If no exact match for item name is found, generate a list of search results. Return if there is only one vague match. If there multiple, parse them and only return the year-relevant one, prioritizing year 2 if no year is passed.
+                //The extra quotes ruin the name check
                 itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE lower(json) like '%\"name\":\"%{itemName.ToLower()}%\"%' AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0");
                 //string RegexPattern = $".*\"name\":\"[a-z ]*{itemName.ToLower()}[a-z ]*\".*";                
                 if(itemList.Count > 0)
@@ -113,19 +115,19 @@ namespace Sagira_Bot
                         foreach (string itemVersion in itemList)
                         {
                             ItemData curItem = ParseItem(itemVersion);
-                            if (curItem.DisplayProperties.Name.ToLower().Contains(itemName.ToLower()))
+                            if (curItem.DisplayProperties.Name.ToLower().Contains(originalName.ToLower()))
                             {
                                 if (itemVersion.Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
                                 {
                                     curItem.Year = 2;
-                                    Targets[curItem.DisplayProperties.Name] = curItem;
+                                    Targets[curItem.DisplayProperties.Name.ToLower()] = curItem;
                                 }
                                 else if (!(itemVersion.Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1)) //If no random perks and you only want year 1 (aka non-year2)
                                 {
-                                    if (!(Targets.ContainsKey(curItem.DisplayProperties.Name) || (Targets.ContainsKey(curItem.DisplayProperties.Name) && Targets[curItem.DisplayProperties.Name].Year == 1)))
+                                    if (!(Targets.ContainsKey(curItem.DisplayProperties.Name.ToLower()) || (Targets.ContainsKey(curItem.DisplayProperties.Name.ToLower()) && Targets[curItem.DisplayProperties.Name.ToLower()].Year == 1)))
                                     {
                                         curItem.Year = 1;
-                                        Targets[curItem.DisplayProperties.Name] = curItem;
+                                        Targets[curItem.DisplayProperties.Name.ToLower()] = curItem;
                                     }
                                 }
                             }

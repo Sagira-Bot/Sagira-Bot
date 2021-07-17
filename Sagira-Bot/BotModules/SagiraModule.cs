@@ -45,10 +45,10 @@ namespace Sagira_Bot.BotModules
 				Year = 1;
 			else if (Context.Message.Content.ToLower().IndexOf("curated") == 1)
 				isCurated = true;
-				List<ItemData> ItemList = sagira.GenerateItemList(GunName, Year);
+				List<ItemData> ItemList = sagira.GenerateItemList(GunName.ToLower(), Year);
 			if(ItemList == null || ItemList.Count == 0)
             {
-				await ReplyAsync($"Couldn't find Weapon: {GunName}");
+				await ReplyAsync($"Couldn't find{(Year != 0 ? $" Year {Year}" : "")} Weapon: {GunName}");
 				return;
 			}
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
