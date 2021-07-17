@@ -12,6 +12,7 @@ namespace Sagira_Bot
 {
     public partial class ItemData
     {
+        public int? Year{ get; set; }
         [J("displayProperties")] public DisplayProperties DisplayProperties { get; set; }
         [J("tooltipNotifications")] public object[] TooltipNotifications { get; set; }
         [J("collectibleHash")] public long CollectibleHash { get; set; }

@@ -57,7 +57,7 @@ namespace Sagira_Bot
             try
             {
                 DB = new SQLiteConnection("Data Source=" + DbDir + DbFileName); //Initialize our DB connection
-                DB.Open();
+                
             }
             catch (Exception e)
             {
@@ -75,6 +75,7 @@ namespace Sagira_Bot
         /// <returns>result of the query</returns>
         public List<string> QueryDB(string Query, bool Debug = false)
         {
+            DB.Open();
             List<string> Results = new List<string>();
             try
             {
@@ -99,7 +100,7 @@ namespace Sagira_Bot
                 Results.Add($"Failed to execute query: {Query}\nDue to error: {e}"); //Log any errors with query
             }
             //DebugLog(result, LogFile);
-            //DB.Close();
+            DB.Close();
             return Results;
         }
 
@@ -202,8 +203,15 @@ namespace Sagira_Bot
         public void DebugLog(string data, string LogName)
         {
             Console.WriteLine(data);
-            using StreamWriter w = File.AppendText(LogName);
-            w.WriteLine($"{DateTime.Now.ToLongTimeString()}:{data}");
+            try
+            {
+                using StreamWriter w = File.AppendText(LogName);
+                w.WriteLine($"{DateTime.Now.ToLongTimeString()}:{data}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error writing to debug log: {e}");
+            }
 
         }
         /// <summary>
@@ -221,6 +229,10 @@ namespace Sagira_Bot
             }
         }
 
+        /// <summary>
+        /// Originally used this to inject REGEXP as a command into our SQLite instance.
+        /// Dumped it
+        /// </summary>
         [SQLiteFunction(Name = "REGEXP", Arguments = 2, FuncType = FunctionType.Scalar)]
         public class RegExSQLiteFunction : SQLiteFunction
         {

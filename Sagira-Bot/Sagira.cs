@@ -23,8 +23,9 @@ namespace Sagira_Bot
         readonly BungieDriver bungie; //Singleton, we just need one BungieDriver ever.
         const string itemTable = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
         const string perkSetTable = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
-        const long trackerDisabled = 2285418970;
-        readonly Dictionary<string, string> RandomExotics = new Dictionary<string, string>()
+        const long trackerDisabled = 2285418970; //Hash for Tracker Socket
+        const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
+        public readonly Dictionary<string, string> RandomExotics = new Dictionary<string, string>()
         {
             {"hawkmoon",""},
             {"dead man's tale",""}
@@ -34,16 +35,19 @@ namespace Sagira_Bot
         {
             bungie = new BungieDriver(); //init
         }
+
         /// <summary>
-        /// Search by substring for an item's name. Item name has to be exact in this way -- Will add a general search feature later for substrings of item names to work.
-        /// The if condition into the for loop does one thing. It doubles up on any instance of an apostraphe in the item's name, so that the DB query doesn't escape at the item's initial apostraphe. 
-        /// Of course basically every item is limited to a single apostraphe, so it's a bit superfluous to iterate over the entire string to double every instance of an apostraphe, but in the off chance an item with multiple ever gets added, this'll cover it. 
+        /// Searches the DB for an item based upon input. If only one gun is returned from the search, return it regardless of the year param.
+        /// If multiple guns are found, it only populates the list of items based upon the year.
+        /// If we're passing in default year (aka ignoring it) we prioritize y2 versions of guns, but return both.
+        /// Y1 and Y2 are determined by form. Y1 guns (also pinnacles, exotics, etc.) use "reusablePlugSetHash" instead of "randomizedPlugSetHash" and vice versa.
         /// </summary>
-        /// <param name="itemName">item name, either partial or exact</param>
-        /// <param name="Year">Year mode. 0 = Ignore year, pull any matches. 1 = Year 1 only. 2 = Year 2 only. </param>
-        /// <returns>JSON entries of items whose name contain itemName</returns>
+        /// <param name="itemName"></param>
+        /// <param name="Year"></param>
+        /// <returns></returns>
         public List<ItemData> PullItemByName(string itemName, int Year = 0)
         {
+            //Sql queries would stop if a single quote is included, so we double up on quotes to escape them
             if (itemName.Contains("'"))
             {
                 string doubleSingleQuote = "";
@@ -56,7 +60,11 @@ namespace Sagira_Bot
                 }
                 itemName = doubleSingleQuote;
             }
+
             List<ItemData> resultingItems = new List<ItemData>();
+            //Dupe protection container.
+            Dictionary<string, ItemData> Targets = new Dictionary<string, ItemData>();
+            //If exact match for item name is found, return if there is only one exact match. If there multiple, parse them and only return the year-relevant one, prioritizing year 2 if no year is passed.
             List<string> itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE CHARINDEX('\"name\":\"{itemName.ToLower()}\"', lower(json)) > 0 AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0");
             if(itemList.Count > 0)
             {
@@ -64,54 +72,81 @@ namespace Sagira_Bot
                 {
                     foreach (string itemVersion in itemList)
                     {
+                        ItemData curItem = ParseItem(itemVersion);
                         if (itemVersion.Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
                         {
-                            resultingItems.Add(ParseItem(itemVersion));
+                            curItem.Year = 2;
+                            Targets[curItem.DisplayProperties.Name] = curItem;
                         }
                         else if (!(itemVersion.Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1)) //If no random perks and you only want year 1 (aka non-year2)
                         {
-                            resultingItems.Add(ParseItem(itemVersion));
+                            if(!(Targets.ContainsKey(curItem.DisplayProperties.Name) || (Targets.ContainsKey(curItem.DisplayProperties.Name) && Targets[curItem.DisplayProperties.Name].Year == 1))){
+                                curItem.Year = 1;
+                                Targets[curItem.DisplayProperties.Name] = curItem;
+                            }
                         }
+                    }
+                    foreach (KeyValuePair<string, ItemData> pair in Targets)
+                    {
+                        resultingItems.Add(pair.Value);
                     }
                 }
                 else
                 {
-                    resultingItems.Add(ParseItem(itemList[0]));
+                    ItemData OnlyItem = ParseItem(itemList[0]);
+                    if (itemList[0].Contains("randomizedPlugSetHash"))
+                        OnlyItem.Year = 2;
+                    else
+                        OnlyItem.Year = 1;
+                    resultingItems.Add(OnlyItem);
                 }
-                return resultingItems; //Technically there is no guarantee we only return 1 item here. So we need to check if we returned multiple.
             }
             else
             {
+                //If no exact match for item name is found, generate a list of search results. Return if there is only one vague match. If there multiple, parse them and only return the year-relevant one, prioritizing year 2 if no year is passed.
                 itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE lower(json) like '%\"name\":\"%{itemName.ToLower()}%\"%' AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0");
-                //string RegexPattern = $".*\"name\":\"[a-z ]*{itemName.ToLower()}[a-z ]*\".*";
+                //string RegexPattern = $".*\"name\":\"[a-z ]*{itemName.ToLower()}[a-z ]*\".*";                
                 if(itemList.Count > 0)
                 {
                     if(itemList.Count > 1)
                     {
-                        for (int i = 0; i < itemList.Count; i++)
+                        foreach (string itemVersion in itemList)
                         {
-                            ItemData deserialize = ParseItem(itemList[i]);
-                            if (deserialize.DisplayProperties.Name.ToLower().Contains(itemName.ToLower()))
+                            ItemData curItem = ParseItem(itemVersion);
+                            if (curItem.DisplayProperties.Name.ToLower().Contains(itemName.ToLower()))
                             {
-                                if (itemList[i].Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
+                                if (itemVersion.Contains("randomizedPlugSetHash") && (Year == 0 || Year == 2))
                                 {
-                                    resultingItems.Add(deserialize);
+                                    curItem.Year = 2;
+                                    Targets[curItem.DisplayProperties.Name] = curItem;
                                 }
-                                else if (!(itemList[i].Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1))
+                                else if (!(itemVersion.Contains("randomizedPlugSetHash")) && (Year == 0 || Year == 1)) //If no random perks and you only want year 1 (aka non-year2)
                                 {
-                                    resultingItems.Add(deserialize);
+                                    if (!(Targets.ContainsKey(curItem.DisplayProperties.Name) || (Targets.ContainsKey(curItem.DisplayProperties.Name) && Targets[curItem.DisplayProperties.Name].Year == 1)))
+                                    {
+                                        curItem.Year = 1;
+                                        Targets[curItem.DisplayProperties.Name] = curItem;
+                                    }
                                 }
                             }
+                        }
+                        foreach (KeyValuePair<string, ItemData> pair in Targets)
+                        {
+                            resultingItems.Add(pair.Value);
                         }
                     }
                     else
                     {
-                        resultingItems.Add(ParseItem(itemList[0]));
+                        ItemData OnlyItem = ParseItem(itemList[0]);
+                        if (itemList[0].Contains("randomizedPlugSetHash"))
+                            OnlyItem.Year = 2;
+                        else
+                            OnlyItem.Year = 1;
+                        resultingItems.Add(OnlyItem);
                     }
                 }
-
-                return resultingItems; //Any item whose name strictly contains a substring that is our item name. Exact matches are prioritized and returned without these substring-holding entries. This could be empty.
             }
+            return resultingItems; //Any item whose name strictly contains a substring that is our item name. Exact matches are prioritized and returned without these substring-holding entries. This could be empty.
 
         }
 
@@ -217,6 +252,13 @@ namespace Sagira_Bot
             return perkHashes;
         }
 
+        /// <summary>
+        /// Pulls specifically the curated roll of y2 gun. Not really used anymore.
+        /// Logic here is curated perks take up 1 of 2 slots for y2 guns (3 for y1)
+        /// Either SingleInitialItemHash OR ReusablePlugItems[] are populared for curated rolls, so per column just pull either or (prioritizing the array).
+        /// </summary>
+        /// <param name="item">ItemData object whose curated roll you want to pull</param>
+        /// <returns></returns>
         public List<ItemData>[] PullCuratedRoll(ItemData item)
         {
             List<ItemData>[] perkHashes = new List<ItemData>[6];
@@ -226,7 +268,7 @@ namespace Sagira_Bot
             perkHashes[curIdx++].Add(item);
             foreach (SocketEntry perk in item.Sockets.SocketEntries)
             {
-                if ((perk.PlugSources == 2 || perk.PlugSources == 6) && perk.ReusablePlugSetHash != 3)
+                if ((perk.PlugSources == 2 || perk.PlugSources == 6) && perk.SingleInitialItemHash != trackerDisabled)
                 {
                     perkHashes[curIdx] = new List<ItemData>();
                     if(perk.ReusablePlugItems.Length == 0 && perk.SingleInitialItemHash != 0)
@@ -246,7 +288,7 @@ namespace Sagira_Bot
             }
             for (int i = 1; i < perkHashes.Length; i++) //Use perkHashes as a reference to how many columns we have. i.e if 3 columns. +1 so we can also account for the item in our first index.
             {
-                if(perkHashes[i] != null)
+                if(perkHashes[i] != null) //Since some guns have variable number of columns, we need to nullcheck
                 {
                     bungie.DebugLog($"CURATED COLUMN {i}: ", bungie.LogFile);
                     foreach (ItemData perk in perkHashes[i])
@@ -300,7 +342,6 @@ namespace Sagira_Bot
         {
 
             List<long?> hashes;
-            List<ItemData>[] curatedRoll; 
             if ((item.Inventory.TierTypeName == "Legendary" && item.DisplaySource.ToLower().Contains("random perks")) || RandomExotics.ContainsKey(item.DisplayProperties.Name.ToLower()))
             {
                 bungie.DebugLog($"Y2 Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
@@ -351,6 +392,84 @@ namespace Sagira_Bot
                 bungie.DebugLog("", bungie.LogFile);
             }
             return perkList;
+        }
+        /// <summary>
+        /// General workflow for the sake of the bot.
+        /// Instead of returning ItemData objects to consume elsewhere, we just pass in an array of string dictionaries meant to represent each perk column.
+        /// We use a Key-Value pair container so that we can ensure no duplicate perks are added (i.e Fatebringer having 2 explosive payloads) and so we can mark the state of each perk
+        /// i.e Perks are either: Intrinsic(intrinsic), Curated-Rollable (curated1), Curated-Unrollable(curated0), Random(random).
+        /// We use these markings to format the bot's resulting embed.
+        /// </summary>
+        /// <param name="item">Item to pull perks from</param>
+        /// <returns></returns>
+        public Dictionary<string, string>[] GeneratePerkDict(ItemData item)
+        {
+            Dictionary<string, string>[] perkDict = new Dictionary<string, string>[5]; //Intrinsic + 4 columns max
+            int curIdx = 0;
+            foreach(SocketEntry socket in item.Sockets.SocketEntries)
+            {
+                //We look for curated first. If we match any curated perks in random section we know that we can roll these curated perks. Else we keep our default mark of Curated-Unrollable (curated0)
+                if ((socket.PlugSources == 2 || socket.PlugSources == 6 || socket.PlugSources == 0) && socket.SingleInitialItemHash != trackerDisabled)
+                {
+                    //Curated perks are either SingleInitialItemHash(y1+2), ReusablePlugSetHash(y1), or ReusablePlugItems(y2).
+                    perkDict[curIdx] = new Dictionary<string, string>();
+                    if (socket.ReusablePlugItems.Length == 0)
+                    {
+                        if(socket.ReusablePlugSetHash != null)
+                        {
+                            List<long> StaticPerks = PullPerksInSet(ParsePlug(PullPlugFromHashes(socket.ReusablePlugSetHash)));
+                            foreach (long perkHash in StaticPerks)
+                            {
+                                perkDict[curIdx][ParseItem(PullItemFromHash(perkHash)).DisplayProperties.Name] = socket.SocketTypeHash == intrinsicSocket ? "intrinsic" : "curated0";
+                            }
+                        }
+                        else if(socket.SingleInitialItemHash != 0)
+                        {
+                           perkDict[curIdx][ParseItem(PullItemFromHash(socket.SingleInitialItemHash)).DisplayProperties.Name] = socket.SocketTypeHash == intrinsicSocket ? "intrinsic" : "curated0";
+                        }
+                    }
+                    else if(socket.ReusablePlugItems.Length > 0)
+                    {
+                        foreach (ReusablePlugItem hash in socket.ReusablePlugItems)
+                        {
+                            perkDict[curIdx][ParseItem(PullItemFromHash(hash.PlugItemHash)).DisplayProperties.Name] = "curated0";
+                        }
+                    }
+                    //Curated perks for this column pulled -- Now pull random perks.
+                    if(socket.RandomizedPlugSetHash != null)
+                    {
+                        //We only look at RandomizedPlugSetHash if applicable here. If not, there is no non-curated roll so we just skip this portion.
+                        List<long> RandomPerks = PullPerksInSet(ParsePlug(PullPlugFromHashes(socket.RandomizedPlugSetHash)));
+                        //Generic workflow of using Perk's Hash -> ID to query the DB and grab the perk, then check if the perk already exists in our Dictionary Array's corresponding Column Dictionary.
+                        //If so, mark as curated rollable
+                        foreach (long perkHash in RandomPerks)
+                        {
+                            string tmpPerkName = ParseItem(PullItemFromHash(perkHash)).DisplayProperties.Name;
+                            if (perkDict[curIdx].ContainsKey(tmpPerkName) && perkDict[curIdx][tmpPerkName].Contains("curated")) 
+                            {
+                                perkDict[curIdx][tmpPerkName] = "curated1";
+                            }
+                            else
+                            {
+                                perkDict[curIdx][tmpPerkName] = "random";
+                            }
+                        }
+                    }
+                    curIdx++;
+                }                  
+            }
+            for(int i = 0; i < perkDict.Length; i++)
+            {
+                if(perkDict[i] != null)
+                {
+                    Console.WriteLine($"Column {i + 1}:");
+                    foreach (KeyValuePair<string, string> pair in perkDict[i])
+                    {
+                        Console.WriteLine($"{pair.Key} - {pair.Value}");
+                    }
+                }
+            }
+            return perkDict;
         }
         /// <summary>
         /// Take a base image and a smaller image. Overlays smaller image over the base, this is just a sample.

@@ -7,14 +7,21 @@ using Discord.WebSocket;
 using Discord.Commands;
 using System.Threading.Tasks;
 using dotenv.net;
+using Interactivity;
 
 namespace Sagira_Bot
 {
+    /// <summary>
+    /// Very bare bones and generic implementation of a Discord.Net bot.
+    /// Secrets hidden in .env file (in same directory as binaries).
+    /// Implementation of InteractivityService present to handle reactions as buttons and user input.
+    /// </summary>
     class SagiraBot
     {
         private readonly DiscordSocketClient DisClient;
         private readonly CommandService CmdService;
         private readonly IServiceProvider DIServices;
+        private readonly InteractivityService Interactivity;
         private readonly string Token;
         public readonly string Prefix;
         public static void Main(string[] args) => new SagiraBot().MainAsync().GetAwaiter().GetResult();
@@ -36,11 +43,11 @@ namespace Sagira_Bot
                 LogLevel = LogSeverity.Debug,
                 CaseSensitiveCommands = false,
             });
-
+            Interactivity = new InteractivityService(DisClient);
             // Subscribe the logging handler to both the client and the CommandService.
             DisClient.Log += Log;
             CmdService.Log += Log;
-            DIServices = (new Initialize(DisClient, CmdService)).BuildServiceProvider();
+            DIServices = (new ServiceHandler(DisClient, CmdService, Interactivity)).BuildServiceProvider();
         }
 
 
