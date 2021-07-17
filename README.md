@@ -6,14 +6,15 @@ In the meantime, all you need to know for this project is the need to put a .env
 
 Format of that file: 
 
-APIKEY=
-BTOKEN=
-PREFIX=!
-LOG=DEBUG.log
-LOGDIR=Logs
+* APIKEY=
+* BTOKEN=
+* PREFIX=!
+* LOG=DEBUG.log
+* LOGDIR=Logs
 
-APIKEY -> Bungie's API Key.
-BTOKEN -> Discord Bot Token.
-Prefix -> Server Prefix
-LOG -> Bungie.Driver/Sagira objects log to this file.
-LOGDIR -> Log above stored here.
+# Envs
+* APIKEY -> Bungie's API Key.
+* BTOKEN -> Discord Bot Token.
+* Prefix -> Server Prefix
+* LOG -> Bungie.Driver/Sagira objects log to this file.
+* LOGDIR -> Log above stored here.
