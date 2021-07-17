@@ -2,7 +2,6 @@
 
 TODO: Write this readme.
 
-In the meantime, all you need to know for this project is the need to put a .env file in your binaries folder (or edit the Env.Load calls to point to wherever you want your env file).
 # Usage
 This is a very impromptu summary of usage, but once you get the bot online after setting your envs, launch the bot. Once done, you have a few commands you can run:
 Assuming prefix = !
