@@ -17,9 +17,13 @@ namespace Sagira_Bot.BotModules
         }
 
 		[Command("rolls")]
+		[Alias("y1", "perks", "y2", "gun")]
 		[Summary("Takes gun name, and optional param year (1 or 2), and generates all possible perks")]
-		public Task RollsAsync(string GunName, int Year=0)
+		public Task RollsAsync([Remainder] string GunName)
         {
+			int Year = 2;
+			if (Context.Message.Content.IndexOf("y1") == 1)
+				Year = 1;
 			List<ItemData> ItemList = sagira.GenerateItemList(GunName, Year);
 			if(ItemList == null || ItemList.Count == 0)
             {
