@@ -18,17 +18,18 @@ namespace Sagira_Bot
     /// Y2 Curated rolls are different. Per Socket they have "reusablePlugItems[]" but that's effectively skipping a step per socket, provided that plugSource is 2 or 6.
     /// Exotic catalysts all start with: singleInitialItemHash: 1498917124 
     /// </summary>
-    class Sagira
+    public class Sagira
     {
         readonly BungieDriver bungie; //Singleton, we just need one BungieDriver ever.
         const string itemTable = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
         const string perkSetTable = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
+        const long trackerDisabled = 2285418970;
         readonly Dictionary<string, string> RandomExotics = new Dictionary<string, string>()
         {
             {"hawkmoon",""},
             {"dead man's tale",""}
         };
-
+        
         public Sagira()
         {
             bungie = new BungieDriver(); //init
@@ -184,7 +185,7 @@ namespace Sagira_Bot
             List<long?> hashes = new List<long?>();
             foreach (SocketEntry sock in item.Sockets.SocketEntries)
             {
-                if (sock.PlugSources == 6 || sock.PlugSources == 2) //Y2 curated rolls still utilize source = 2, but y1 guns generally have source = 6. Note that FRAME is now a perk, so these curated rolls have up to 5 total columns.
+                if ((sock.PlugSources == 6 || sock.PlugSources == 2) && sock.SingleInitialItemHash != trackerDisabled) //Y2 curated rolls still utilize source = 2, but y1 guns generally have source = 6. Note that FRAME is now a perk, so these curated rolls have up to 5 total columns.
                     hashes.Add(sock.ReusablePlugSetHash);
             }
             return hashes;
@@ -304,7 +305,7 @@ namespace Sagira_Bot
             {
                 bungie.DebugLog($"Y2 Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
                 hashes = PullRandomizedPerkHash(item);
-                curatedRoll = PullCuratedRoll(item);
+                //curatedRoll = PullCuratedRoll(item);
             }
             else
             {
@@ -317,11 +318,9 @@ namespace Sagira_Bot
                 bungie.DebugLog($"Couldn't pull perks for: {item.DisplayProperties.Name}", bungie.LogFile);
                 return null;
             }
-            hashes.RemoveAll(h => h == 3);
+            //hashes.RemoveAll(h => (h == 3 || h == 5 || h == 7 || h == 9));
             List<List<long>> perkHashes = new List<List<long>>();
-            List<ItemData>[] perkList = new List<ItemData>[6]; //index 0 = item itself, 1-6 = perk columns [frame] [col1-4]
-
-
+            List<ItemData>[] perkList = new List<ItemData>[6]; //index 0 = item itself, 1-5 = perk columns [frame] [col1-5]
 
             foreach (long? hash in hashes)
             {
