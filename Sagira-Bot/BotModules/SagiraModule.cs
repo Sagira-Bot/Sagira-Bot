@@ -17,44 +17,54 @@ namespace Sagira_Bot.BotModules
         }
 
 		[Command("rolls")]
-		[Alias("y1", "perks", "y2", "gun")]
+		[Alias("y1", "curated", "perks", "y2", "gun")]
 		[Summary("Takes gun name, and optional param year (1 or 2), and generates all possible perks")]
 		public Task RollsAsync([Remainder] string GunName)
         {
 			int Year = 2;
-			if (Context.Message.Content.IndexOf("y1") == 1)
+			bool isCurated = false;
+			if (Context.Message.Content.ToLower().IndexOf("y1") == 1)
 				Year = 1;
-			List<ItemData> ItemList = sagira.GenerateItemList(GunName, Year);
+			else if (Context.Message.Content.ToLower().IndexOf("curated") == 1)
+				isCurated = true;
+				List<ItemData> ItemList = sagira.GenerateItemList(GunName, Year);
 			if(ItemList == null || ItemList.Count == 0)
             {
 				return ReplyAsync($"Couldn't find perks for: {GunName}");
 			}
-			List<ItemData>[] PerkColumns = sagira.GeneratePerkColumns(ItemList[0]);
+			List<ItemData>[] PerkColumns = sagira.GeneratePerkColumns(ItemList[0], isCurated);
 			//Rich Embed starts here -- \u200b is 0 width space
 			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis
 			var dColor = Discord.Color.LightGrey;
+			string ele = "Kinetic";
 			switch (PerkColumns[0][0].DefaultDamageType)
             {
 				case 1:
 					dColor = Discord.Color.LightGrey;
+					ele = "Kinetic";
 					break;
 				case 2:
 					dColor = Discord.Color.Blue;
+					ele = "Arc";
 					break;
 				case 3:
 					dColor = Discord.Color.Orange;
+					ele = "Solar";
 					break;
 				case 4:
 					dColor = Discord.Color.Purple;
+					ele = "Void";
 					break;
 				case 6:
 					dColor = Discord.Color.DarkBlue;
+					ele = "Stasis";
 					break;
             }
 			var Embed = new EmbedBuilder
 			{
 				ThumbnailUrl = $"https://www.bungie.net{PerkColumns[0][0].DisplayProperties.Icon}",
 				Title = $"{PerkColumns[0][0].DisplayProperties.Name}",
+				Description = $"{PerkColumns[0][0].Inventory.TierTypeName} {ele} {PerkColumns[0][0].ItemTypeDisplayName}",
 				Color = dColor
 
 			};

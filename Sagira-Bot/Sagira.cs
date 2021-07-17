@@ -296,7 +296,7 @@ namespace Sagira_Bot
         /// </summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public List<ItemData>[] GeneratePerkColumns(ItemData item)
+        public List<ItemData>[] GeneratePerkColumns(ItemData item, bool isCurated = false)
         {
 
             List<long?> hashes;
@@ -304,8 +304,10 @@ namespace Sagira_Bot
             if ((item.Inventory.TierTypeName == "Legendary" && item.DisplaySource.ToLower().Contains("random perks")) || RandomExotics.ContainsKey(item.DisplayProperties.Name.ToLower()))
             {
                 bungie.DebugLog($"Y2 Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
-                hashes = PullRandomizedPerkHash(item);
-                //curatedRoll = PullCuratedRoll(item);
+                if(!isCurated)
+                    hashes = PullRandomizedPerkHash(item);
+                else
+                    return PullCuratedRoll(item);
             }
             else
             {
