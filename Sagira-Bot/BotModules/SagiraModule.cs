@@ -33,7 +33,7 @@ namespace Sagira_Bot.BotModules
 		/// <param name="GunName"></param>
 		/// <returns></returns>
 		[Command("rolls", RunMode = RunMode.Async)]
-		[Alias("y1", "curated", "perks", "y2", "gun")]
+		[Alias("y1", "curated")]
 		[Summary("Takes gun name, and optional param year (1 or 2), and generates all possible perks")]
 		public async Task RollsAsync([Remainder] string GunName)
         {
@@ -173,5 +173,14 @@ namespace Sagira_Bot.BotModules
 			await ReplyAsync("", false, Embed.Build());
 			return;
 		}
+
+		[Command("help")]
+		[Summary("Spits out usage string")]
+		public Task HelpAsync()
+		{
+			return ReplyAsync($"The general usage of this bot is to display potential rolls for desired weapons.{System.Environment.NewLine}Basic usage: {Context.Message.Content[0]}rolls WEAPON-NAME {System.Environment.NewLine}You may also use: [{Context.Message.Content[0]}Curated and {Context.Message.Content[0]}y1]");
+		}
 	}
+
+
 }
