@@ -73,7 +73,7 @@ namespace Sagira_Bot
         /// </summary>
         /// <param name="Query">SQL Query string</param>
         /// <returns>result of the query</returns>
-        public List<string> QueryDB(string Query, bool Debug = false)
+        public List<string> QueryDBTimeout(string Query, bool Debug = false)
         {
             //DB.Open();
             List<string> Results = new List<string>();
@@ -87,9 +87,9 @@ namespace Sagira_Bot
                 {
                     while (reader.Read()) //While still getting results, progress until results are exhausted.
                     {
-                       Results.Add(reader.GetString(0));
-                       if(Debug)
-                        DebugLog(reader.GetString(0), LogFile);
+                        Results.Add(reader.GetString(0));
+                        if (Debug)
+                            DebugLog(reader.GetString(0), LogFile);
 
                     }
                 }
@@ -104,6 +104,27 @@ namespace Sagira_Bot
             return Results;
         }
 
+        /// <summary>
+        /// Query DB with a Timeout. Just a helper for the above method and times out after 30s.
+        /// </summary>
+        /// <param name="Query"></param>
+        /// <param name="Debug"></param>
+        /// <returns></returns>
+        public async Task<List<string>> QueryDB(string Query, int debugMilli = 30000, bool Debug = false)
+        {
+            var TimeOut = Task.Delay(debugMilli);
+            Task<List<String>> qry = Task.Factory.StartNew(() => QueryDBTimeout(Query, Debug));
+            await Task.WhenAny(TimeOut, qry);
+            if (qry.IsCompleted)
+            {
+                return qry.Result;
+            }
+            else
+            {
+                DebugLog("Query Timed Out", LogFile);
+                return new List<string>();
+            }
+        }
         /// <summary>
         /// Pull Manifest from BaseUrl+URL (which in our case is the en url). Results in a .zip file being downloaded.
         /// </summary>

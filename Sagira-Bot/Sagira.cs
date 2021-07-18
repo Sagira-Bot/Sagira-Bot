@@ -66,7 +66,7 @@ namespace Sagira_Bot
             //Dupe protection container.
             Dictionary<string, ItemData> Targets = new Dictionary<string, ItemData>();
             //If exact match for item name is found, return if there is only one exact match. If there multiple, parse them and only return the year-relevant one, prioritizing year 2 if no year is passed.
-            List<string> itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE CHARINDEX('\"name\":\"{itemName.ToLower()}\"', lower(json)) > 0 AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0");
+            List<string> itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE CHARINDEX('\"name\":\"{itemName.ToLower()}\"', lower(json)) > 0 AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0").Result;
             if(itemList.Count > 0)
             {
                 if (itemList.Count > 1)
@@ -106,7 +106,7 @@ namespace Sagira_Bot
             {
                 //If no exact match for item name is found, generate a list of search results. Return if there is only one vague match. If there multiple, parse them and only return the year-relevant one, prioritizing year 2 if no year is passed.
                 //The extra quotes ruin the name check
-                itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE lower(json) like '%\"name\":\"%{itemName.ToLower()}%\"%' AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0");
+                itemList = bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE lower(json) like '%\"name\":\"%{itemName.ToLower()}%\"%' AND CHARINDEX('\"collectibleHash\"', json) > 0 AND CHARINDEX('item_type.weapon', json) > 0").Result;
                 //string RegexPattern = $".*\"name\":\"[a-z ]*{itemName.ToLower()}[a-z ]*\".*";                
                 if(itemList.Count > 0)
                 {
@@ -160,7 +160,7 @@ namespace Sagira_Bot
         /// <returns>JSON entry of the plug set</returns>
         public string PullPlugFromHashes(long? hash, bool Debug = false)
         {
-            return bungie.QueryDB($"SELECT json FROM '{perkSetTable}' WHERE id={generateIDfromHash((long)hash)}", Debug)[0];
+            return bungie.QueryDB($"SELECT json FROM '{perkSetTable}' WHERE id={generateIDfromHash((long)hash)}", Debug).Result[0];
 
         }
 
@@ -172,7 +172,7 @@ namespace Sagira_Bot
         /// <returns>JSON entry of the item</returns>
         public string PullItemFromHash(long? hash, bool Debug = false)
         {
-            return bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE id={generateIDfromHash((long)hash)}", Debug)[0];
+            return bungie.QueryDB($"SELECT json FROM '{itemTable}' WHERE id={generateIDfromHash((long)hash)}", Debug).Result[0];
         }
 
         /// <summary>
