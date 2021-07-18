@@ -17,6 +17,8 @@ namespace Sagira_Bot
     /// Workflows: Y2, Y1, and Exotics are all the same except that Y1 and Exotics use "reusablePlugSetHash" instead of "randomizedPlugSetHash". 
     /// Y2 Curated rolls are different. Per Socket they have "reusablePlugItems[]" but that's effectively skipping a step per socket, provided that plugSource is 2 or 6.
     /// Exotic catalysts all start with: singleInitialItemHash: 1498917124 
+    /// ASSUMPTION: Only 2 entries of a single weapon can exist at any given moment -- y1 and y2. But not all y2 guns have y1 variants.
+    /// If this turns out to be false, change Y1/Y2WeaponTable Dictionaries to a single weapon table again.
     /// </summary>
     public class Sagira
     {
@@ -24,7 +26,8 @@ namespace Sagira_Bot
         const string itemTable = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
         const string perkSetTable = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
         readonly Dictionary<int, ItemData> ItemTable;
-        readonly Dictionary<int, ItemData> WeaponTable;
+        readonly Dictionary<string, ItemData> Y1WeaponTable;
+        readonly Dictionary<string, ItemData> Y2WeaponTable;
         readonly Dictionary<int, PlugSetData> PlugSetTable;
         
         const long trackerDisabled = 2285418970; //Hash for Tracker Socket
@@ -39,7 +42,8 @@ namespace Sagira_Bot
         {
             bungie = new BungieDriver(); //init
             ItemTable = new Dictionary<int, ItemData>();
-            WeaponTable = new Dictionary<int, ItemData>();
+            Y1WeaponTable = new Dictionary<string, ItemData>();
+            Y2WeaponTable = new Dictionary<string, ItemData>();
             PlugSetTable = new Dictionary<int, PlugSetData>();
             PullDbTables();
             bungie.CloseDB();
@@ -59,12 +63,17 @@ namespace Sagira_Bot
                 ItemTable[pair.Key] = curItem;
                 if (pair.Value.Contains("item_type.weapon") && pair.Value.Contains("collectibleHash")) //Weapons only + weapons with collectibles (aka every real instance of a weapon. See: VOG weapons that have 2x weapon entries)
                 {
-                    if (pair.Value.Contains("randomizedPlugSetHash")) //Only random roll weapons have randomizedPlugSetHash, so label them as y2.
+                    //Only random roll weapons have randomizedPlugSetHash, so label them as y2.
+                    if (pair.Value.Contains("randomizedPlugSetHash"))
+                    {
                         curItem.Year = 2;
+                        Y2WeaponTable[curItem.DisplayProperties.Name.ToLower()] = curItem;
+                    }
                     else
+                    {
                         curItem.Year = 1;
-
-                    WeaponTable[pair.Key] = curItem;
+                        Y1WeaponTable[curItem.DisplayProperties.Name.ToLower()] = curItem;
+                    }
                 }                   
             }
             foreach (KeyValuePair<int, string> pair in psTable)
@@ -94,51 +103,45 @@ namespace Sagira_Bot
             List<ItemData> ExactMatches = new List<ItemData>();
             List<ItemData> SubstringMatches = new List<ItemData>();
             Dictionary<string, ItemData> resultQueue = new Dictionary<string, ItemData>();
-
-            foreach(KeyValuePair<int, ItemData> pair in WeaponTable)
+            string searchTarget = itemName.ToLower();
+            //Exact Match Check. Prioritize y2 if no year is passed, else y1.
+            if (Y2WeaponTable.ContainsKey(searchTarget) && (Year == 0 || Year == 2))
             {
-                if(pair.Value.DisplayProperties.Name.ToLower() == itemName.ToLower())
-                {
-                    ExactMatches.Add(pair.Value);
-                }
-                else if (pair.Value.DisplayProperties.Name.ToLower().Contains(itemName.ToLower())){
-                    SubstringMatches.Add(pair.Value);
-                }
+                resultingItems.Add(Y2WeaponTable[searchTarget]);
+                return resultingItems;
             }
-            if(ExactMatches.Count > 0)
+            else if (Y1WeaponTable.ContainsKey(searchTarget) && (Year == 0 || Year == 1))
             {
-                ItemData curSelection = ExactMatches[0];
-                foreach(ItemData itm in ExactMatches)
-                {
-                    if ((itm.Year == Year || Year == 0 ) && itm.Year > curSelection.Year)
-                            curSelection = itm;
-                }
-                resultingItems.Add(curSelection);
+                resultingItems.Add(Y1WeaponTable[searchTarget]);
+                return resultingItems;
             }
-            else if(SubstringMatches.Count > 0)
+            //Substring Check
+            if(Year == 0 || Year == 2)
             {
-                foreach (ItemData itm in SubstringMatches)
+                foreach (KeyValuePair<string, ItemData> pair in Y2WeaponTable)
                 {
-                    if (itm.Year == Year || Year == 0)
+                    if (pair.Key.Contains(searchTarget))
                     {
-                        //If we don't have an entry of this item queued for adding in our list, add regardless. 
-                        //Else only add if the entry will be replaced by a y2 version.
-                        //Else only there for the case where we find a y1 version then y2 after. If y2 is found first, the else if will never trigger
-                        if (!resultQueue.ContainsKey(itm.DisplayProperties.Name))
-                        {
-                            resultQueue[itm.DisplayProperties.Name] = itm;
-                        }
-                        else if(itm.Year == 2)
-                        {
-                            resultQueue[itm.DisplayProperties.Name] = itm;
-                        }
-                    } 
-                }
-                foreach(KeyValuePair<string, ItemData> pair in resultQueue)
-                {
-                    resultingItems.Add(pair.Value);
+                        resultQueue[pair.Key] = pair.Value;
+                    }
                 }
             }
+            if(Year == 0 || Year == 1)
+            {
+                foreach (KeyValuePair<string, ItemData> pair in Y1WeaponTable)
+                {
+                    if (pair.Key.Contains(searchTarget))
+                    {
+                        if(!resultQueue.ContainsKey(pair.Key))
+                            resultQueue[searchTarget] = pair.Value; //Implication here is if the key already exists, it must be a y2 version. If a y2 version exists, it must be prioritized if Year != 1
+                    }
+                }
+            }
+            foreach(KeyValuePair<string, ItemData> pair in resultQueue)
+            {
+                resultingItems.Add(pair.Value);
+            }
+
             return resultingItems;
         }
 
@@ -322,7 +325,7 @@ namespace Sagira_Bot
         }
 
         ///-----------------------------------------------------------UNUSED CODE BELOW HERE TEMPORARILY-----------------------------------------------------------------------------
-
+/*
         /// <summary>
         /// NOT USED AT THE MOMENT
         /// Pulls specifically the curated roll of y2 gun. Not really used anymore.
@@ -514,5 +517,6 @@ namespace Sagira_Bot
             }
 
         }
+*/
     }
 }
