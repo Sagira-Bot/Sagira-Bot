@@ -24,7 +24,8 @@ namespace Sagira_Bot
         const string itemTable = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
         const string perkSetTable = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
         Dictionary<int, ItemData> ItemTable;
-        Dictionary<int , PlugSetData> PlugSetTable;
+        Dictionary<int, ItemData> WeaponTable;
+        Dictionary<int, PlugSetData> PlugSetTable;
         
         const long trackerDisabled = 2285418970; //Hash for Tracker Socket
         const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
@@ -37,6 +38,9 @@ namespace Sagira_Bot
         public Sagira()
         {
             bungie = new BungieDriver(); //init
+            ItemTable = new Dictionary<int, ItemData>();
+            WeaponTable = new Dictionary<int, ItemData>();
+            PlugSetTable = new Dictionary<int, PlugSetData>();
             PullDbTables();
             bungie.CloseDB();
         }
@@ -49,13 +53,14 @@ namespace Sagira_Bot
         {
             Dictionary<int, string> iTable = bungie.QueryEntireDb($"SELECT * FROM {itemTable}");
             Dictionary<int, string> psTable = bungie.QueryEntireDb($"SELECT * FROM {perkSetTable}");
-            ItemTable = new Dictionary<int, ItemData>();
             foreach(KeyValuePair<int, string> pair in iTable)
             {
-                ItemTable[pair.Key] = ParseItem(pair.Value); 
+                ItemData curItem = ParseItem(pair.Value);
+                ItemTable[pair.Key] = curItem;
+                if (pair.Value.Contains("item_type.weapon") && pair.Value.Contains("collectibleHash"))
+                    WeaponTable[pair.Key] = curItem;
             }
 
-            PlugSetTable = new Dictionary<int, PlugSetData>();
             foreach (KeyValuePair<int, string> pair in psTable)
             {
                 PlugSetTable[pair.Key] = ParsePlug(pair.Value);
@@ -68,12 +73,21 @@ namespace Sagira_Bot
             return ItemTable[id];
         }
         
+        /// <summary>
+        /// Checks Weapon Dictionary for items whose name match or partially match passed in item name
+        /// Prioritizes y2 in the case of duplicates if year = 0 or 2
+        /// Prioritizs y1 if year = 1
+        /// For substring matches y1 and y2 both get added (with y2 priority) if year = 0
+        /// </summary>
+        /// <param name="itemName">Name of the item to search for</param>
+        /// <param name="Year">0,1,2. 0 = both, 1 = Static rolls, 2 = Random rolls</param>
+        /// <returns></returns>
         public List<ItemData> PullItemListByName(string itemName, int Year = 0)
         {
             List<ItemData> resultingItems = new List<ItemData>();
             List<ItemData> ExactMatches = new List<ItemData>();
             List<ItemData> SubstringMatches = new List<ItemData>();
-            foreach(KeyValuePair<int, ItemData> pair in ItemTable)
+            foreach(KeyValuePair<int, ItemData> pair in WeaponTable)
             {
                 if(pair.Value.DisplayProperties.Name.ToLower() == itemName.ToLower())
                 {
@@ -89,12 +103,12 @@ namespace Sagira_Bot
                 ItemData curSelection = ExactMatches[0];
                 foreach(ItemData itm in ExactMatches)
                 {
-                    if (itm.Sockets.SocketEntries[1].RandomizedPlugSetHash != null)
-                        itm.Year = 2;
-                    else
-                        itm.Year = 1;
-                    if (itm.Year == Year ||  Year == 0)
-                        curSelection = itm;
+                        if (itm.Sockets.SocketEntries[1].RandomizedPlugSetHash != null)
+                            itm.Year = 2;
+                        else
+                            itm.Year = 1;
+                        if (itm.Year == Year || Year == 0)
+                            curSelection = itm;
                 }
                 resultingItems.Add(curSelection);
             }
@@ -108,8 +122,8 @@ namespace Sagira_Bot
                         itm.Year = 1;
                     if (itm.Year == Year ||  Year == 0)
                         resultingItems.Add(itm);
-                }
-                
+                    
+                }  
             }
             return resultingItems;
         }
@@ -123,7 +137,6 @@ namespace Sagira_Bot
         public PlugSetData PullPlugFromHashes(long? hash, bool Debug = false)
         {
             return PlugSetTable[generateIDfromHash((long)hash)];
-
         }
 
         /// <summary>
@@ -158,38 +171,6 @@ namespace Sagira_Bot
         }
 
         /// <summary>
-        /// Takes an Item's ItemData and pulls out all randomizedPlugSetHashes to search for in the PlugSetDefinition db.
-        /// We know we're look at perks (and not intrisincis, masterworks, shaders, or mods) by only pulling hashes with a PlugSource of 2.
-        /// Returns a long? list since RandomizedPlugSetHashes are nullable. 
-        /// </summary>
-        /// <param name="item">ItemData object for the item whose perks you'd like to pull</param>
-        /// <returns>List of every randomized plug set hash (aka perk column)</returns>
-        public List<long?> PullRandomizedPerkHash(ItemData item)
-        {
-            List<long?> hashes = new List<long?>();
-            foreach (SocketEntry sock in item.Sockets.SocketEntries)
-            {
-                if (sock.PlugSources == 2 || sock.PlugSources == 0) //PlugSource = 2 for random perks generally, but =0 if the y1 version of the gun didn't have that column of perk.
-                    hashes.Add(sock.RandomizedPlugSetHash);
-            }
-            return hashes;
-        }
-        /// <summary>
-        /// Y1 Method of pulling perks. Y1 guns use "ReusablePlugSetHash" instead of Randomized. After this point the y1 and y2 workflows are the same. This also works on Exotics and any static roll guns.
-        /// </summary>
-        /// <param name="item"></param>
-        /// <returns></returns>
-        public List<long?> PullReusablePerkHash(ItemData item)
-        {
-            List<long?> hashes = new List<long?>();
-            foreach (SocketEntry sock in item.Sockets.SocketEntries)
-            {
-                if ((sock.PlugSources == 6 || sock.PlugSources == 2) && sock.SingleInitialItemHash != trackerDisabled) //Y2 curated rolls still utilize source = 2, but y1 guns generally have source = 6. Note that FRAME is now a perk, so these curated rolls have up to 5 total columns.
-                    hashes.Add(sock.ReusablePlugSetHash);
-            }
-            return hashes;
-        }
-        /// <summary>
         /// An item's db id is the item's hash cast to a signed int. 
         /// </summary>
         /// <param name="hash">Item's hash</param>
@@ -216,55 +197,7 @@ namespace Sagira_Bot
             return perkHashes;
         }
 
-        /// <summary>
-        /// Pulls specifically the curated roll of y2 gun. Not really used anymore.
-        /// Logic here is curated perks take up 1 of 2 slots for y2 guns (3 for y1)
-        /// Either SingleInitialItemHash OR ReusablePlugItems[] are populared for curated rolls, so per column just pull either or (prioritizing the array).
-        /// </summary>
-        /// <param name="item">ItemData object whose curated roll you want to pull</param>
-        /// <returns></returns>
-        public List<ItemData>[] PullCuratedRoll(ItemData item)
-        {
-            List<ItemData>[] perkHashes = new List<ItemData>[6];
-            //List<long>[] perkHashes = new List<long>[5];
-            int curIdx = 0;
-            perkHashes[curIdx] = new List<ItemData>();
-            perkHashes[curIdx++].Add(item);
-            foreach (SocketEntry perk in item.Sockets.SocketEntries)
-            {
-                if ((perk.PlugSources == 2 || perk.PlugSources == 6) && perk.SingleInitialItemHash != trackerDisabled)
-                {
-                    perkHashes[curIdx] = new List<ItemData>();
-                    if(perk.ReusablePlugItems.Length == 0 && perk.SingleInitialItemHash != 0)
-                    {
-                        perkHashes[curIdx].Add(PullItemFromHash(perk.SingleInitialItemHash));
-                    }
-                    else
-                    {
-                        foreach(ReusablePlugItem hash in perk.ReusablePlugItems)
-                        {
-                            perkHashes[curIdx].Add(PullItemFromHash(hash.PlugItemHash));
-                        }
-                    }
-                    curIdx++;
-                }
-                    
-            }
-            for (int i = 1; i < perkHashes.Length; i++) //Use perkHashes as a reference to how many columns we have. i.e if 3 columns. +1 so we can also account for the item in our first index.
-            {
-                if(perkHashes[i] != null) //Since some guns have variable number of columns, we need to nullcheck
-                {
-                    bungie.DebugLog($"CURATED COLUMN {i}: ", bungie.LogFile);
-                    foreach (ItemData perk in perkHashes[i])
-                    {
-                        bungie.DebugLog($"{perk.DisplayProperties.Name}, ", bungie.LogFile);
-                    }
-                    bungie.DebugLog("", bungie.LogFile);
-                }
-
-            }
-            return perkHashes;
-        }
+        
         /// <summary>
         /// Encapsulated workflow that takes an item name and generates a list of the perks available for that item per slot. 
         /// Need to add consideration for static rolled items (i.e blues, exotics, y1, etc.)
@@ -294,68 +227,7 @@ namespace Sagira_Bot
                 return new List<ItemData>();
             }
         }
-        /// <summary>
-        /// Prior validation and selection of y1 or y2 usage should guarantee that whatever this function parses is intended
-        /// It checks if the gun is legendary and has random rolls, and if so return the columns. If not return the y1 curated roll. 
-        /// Y1 static roll workflow conveniently matches the non-random roll exotic workflow :)
-        /// Note that y2 curated rolls not added just yet.
-        /// </summary>
-        /// <param name="item"></param>
-        /// <returns></returns>
-        public List<ItemData>[] GeneratePerkColumns(ItemData item, bool isCurated = false)
-        {
 
-            List<long?> hashes;
-            if ((item.Inventory.TierTypeName == "Legendary" && item.DisplaySource.ToLower().Contains("random perks")) || RandomExotics.ContainsKey(item.DisplayProperties.Name.ToLower()))
-            {
-                bungie.DebugLog($"Y2 Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
-                if(!isCurated)
-                    hashes = PullRandomizedPerkHash(item);
-                else
-                    return PullCuratedRoll(item);
-            }
-            else
-            {
-                bungie.DebugLog($"Y1/Exotic Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
-                hashes = PullReusablePerkHash(item);
-                //Pull Exotic Catalysts too
-            }
-            if (hashes.Count == 0)
-            {
-                bungie.DebugLog($"Couldn't pull perks for: {item.DisplayProperties.Name}", bungie.LogFile);
-                return null;
-            }
-            List<List<ItemData>> perkHashes = new List<List<ItemData>>();
-            List<ItemData>[] perkList = new List<ItemData>[6]; //index 0 = item itself, 1-5 = perk columns [frame] [col1-5]
-
-            foreach (long? hash in hashes)
-            {
-                   perkHashes.Add(PullPerksInSet(PullPlugFromHashes(hash))); //index 0 = column 1, index 3 = column 4
-            }
-            //First entry will always be the Base item. Rest will be perks split by column.
-            perkList[0] = new List<ItemData>();
-            perkList[0].Add(item);
-            for (int i = 0; i < perkHashes.Count; i++)
-            {
-                perkList[i + 1] = new List<ItemData>();
-                bungie.DebugLog("------------------", bungie.LogFile);
-                foreach (ItemData itm in perkHashes[i])
-                {
-                    perkList[i + 1].Add(item);
-                }
-            }
-
-            for (int i = 1; i < perkHashes.Count+1; i++) //Use perkHashes as a reference to how many columns we have. i.e if 3 columns. +1 so we can also account for the item in our first index.
-            {
-                bungie.DebugLog($"COLUMN {i}: ", bungie.LogFile);
-                foreach (ItemData perk in perkList[i])
-                {
-                    bungie.DebugLog($"{perk.DisplayProperties.Name}, ", bungie.LogFile);
-                }
-                bungie.DebugLog("", bungie.LogFile);
-            }
-            return perkList;
-        }
         /// <summary>
         /// General workflow for the sake of the bot.
         /// Instead of returning ItemData objects to consume elsewhere, we just pass in an array of string dictionaries meant to represent each perk column.
@@ -433,6 +305,158 @@ namespace Sagira_Bot
                 }
             }
             return perkDict;
+        }
+
+        ///-----------------------------------------------------------UNUSED CODE BELOW HERE TEMPORARILY-----------------------------------------------------------------------------
+
+        /// <summary>
+        /// NOT USED AT THE MOMENT
+        /// Pulls specifically the curated roll of y2 gun. Not really used anymore.
+        /// Logic here is curated perks take up 1 of 2 slots for y2 guns (3 for y1)
+        /// Either SingleInitialItemHash OR ReusablePlugItems[] are populared for curated rolls, so per column just pull either or (prioritizing the array).
+        /// </summary>
+        /// <param name="item">ItemData object whose curated roll you want to pull</param>
+        /// <returns></returns>
+        public List<ItemData>[] PullCuratedRoll(ItemData item)
+        {
+            List<ItemData>[] perkHashes = new List<ItemData>[6];
+            //List<long>[] perkHashes = new List<long>[5];
+            int curIdx = 0;
+            perkHashes[curIdx] = new List<ItemData>();
+            perkHashes[curIdx++].Add(item);
+            foreach (SocketEntry perk in item.Sockets.SocketEntries)
+            {
+                if ((perk.PlugSources == 2 || perk.PlugSources == 6) && perk.SingleInitialItemHash != trackerDisabled)
+                {
+                    perkHashes[curIdx] = new List<ItemData>();
+                    if (perk.ReusablePlugItems.Length == 0 && perk.SingleInitialItemHash != 0)
+                    {
+                        perkHashes[curIdx].Add(PullItemFromHash(perk.SingleInitialItemHash));
+                    }
+                    else
+                    {
+                        foreach (ReusablePlugItem hash in perk.ReusablePlugItems)
+                        {
+                            perkHashes[curIdx].Add(PullItemFromHash(hash.PlugItemHash));
+                        }
+                    }
+                    curIdx++;
+                }
+
+            }
+            for (int i = 1; i < perkHashes.Length; i++) //Use perkHashes as a reference to how many columns we have. i.e if 3 columns. +1 so we can also account for the item in our first index.
+            {
+                if (perkHashes[i] != null) //Since some guns have variable number of columns, we need to nullcheck
+                {
+                    bungie.DebugLog($"CURATED COLUMN {i}: ", bungie.LogFile);
+                    foreach (ItemData perk in perkHashes[i])
+                    {
+                        bungie.DebugLog($"{perk.DisplayProperties.Name}, ", bungie.LogFile);
+                    }
+                    bungie.DebugLog("", bungie.LogFile);
+                }
+
+            }
+            return perkHashes;
+        }
+
+        /// <summary>
+        /// NOT USED AT THE MOMENT
+        /// Takes an Item's ItemData and pulls out all randomizedPlugSetHashes to search for in the PlugSetDefinition db.
+        /// We know we're look at perks (and not intrisincis, masterworks, shaders, or mods) by only pulling hashes with a PlugSource of 2.
+        /// Returns a long? list since RandomizedPlugSetHashes are nullable. 
+        /// </summary>
+        /// <param name="item">ItemData object for the item whose perks you'd like to pull</param>
+        /// <returns>List of every randomized plug set hash (aka perk column)</returns>
+        public List<long?> PullRandomizedPerkHash(ItemData item)
+        {
+            List<long?> hashes = new List<long?>();
+            foreach (SocketEntry sock in item.Sockets.SocketEntries)
+            {
+                if (sock.PlugSources == 2 || sock.PlugSources == 0) //PlugSource = 2 for random perks generally, but =0 if the y1 version of the gun didn't have that column of perk.
+                    hashes.Add(sock.RandomizedPlugSetHash);
+            }
+            return hashes;
+        }
+        /// <summary>
+        /// NOT USED AT THE MOMENT
+        /// Y1 Method of pulling perks. Y1 guns use "ReusablePlugSetHash" instead of Randomized. After this point the y1 and y2 workflows are the same. This also works on Exotics and any static roll guns.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public List<long?> PullReusablePerkHash(ItemData item)
+        {
+            List<long?> hashes = new List<long?>();
+            foreach (SocketEntry sock in item.Sockets.SocketEntries)
+            {
+                if ((sock.PlugSources == 6 || sock.PlugSources == 2) && sock.SingleInitialItemHash != trackerDisabled) //Y2 curated rolls still utilize source = 2, but y1 guns generally have source = 6. Note that FRAME is now a perk, so these curated rolls have up to 5 total columns.
+                    hashes.Add(sock.ReusablePlugSetHash);
+            }
+            return hashes;
+        }
+
+        /// <summary>
+        /// NOT USED AT THE MOMENT
+        /// Prior validation and selection of y1 or y2 usage should guarantee that whatever this function parses is intended
+        /// It checks if the gun is legendary and has random rolls, and if so return the columns. If not return the y1 curated roll. 
+        /// Y1 static roll workflow conveniently matches the non-random roll exotic workflow :)
+        /// Note that y2 curated rolls not added just yet.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public List<ItemData>[] GeneratePerkColumns(ItemData item, bool isCurated = false)
+        {
+
+            List<long?> hashes;
+            if ((item.Inventory.TierTypeName == "Legendary" && item.DisplaySource.ToLower().Contains("random perks")) || RandomExotics.ContainsKey(item.DisplayProperties.Name.ToLower()))
+            {
+                bungie.DebugLog($"Y2 Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
+                if (!isCurated)
+                    hashes = PullRandomizedPerkHash(item);
+                else
+                    return PullCuratedRoll(item);
+            }
+            else
+            {
+                bungie.DebugLog($"Y1/Exotic Workflow Initiliazed For Item: {item.DisplayProperties.Name}", bungie.LogFile);
+                hashes = PullReusablePerkHash(item);
+                //Pull Exotic Catalysts too
+            }
+            if (hashes.Count == 0)
+            {
+                bungie.DebugLog($"Couldn't pull perks for: {item.DisplayProperties.Name}", bungie.LogFile);
+                return null;
+            }
+            List<List<ItemData>> perkHashes = new List<List<ItemData>>();
+            List<ItemData>[] perkList = new List<ItemData>[6]; //index 0 = item itself, 1-5 = perk columns [frame] [col1-5]
+
+            foreach (long? hash in hashes)
+            {
+                perkHashes.Add(PullPerksInSet(PullPlugFromHashes(hash))); //index 0 = column 1, index 3 = column 4
+            }
+            //First entry will always be the Base item. Rest will be perks split by column.
+            perkList[0] = new List<ItemData>();
+            perkList[0].Add(item);
+            for (int i = 0; i < perkHashes.Count; i++)
+            {
+                perkList[i + 1] = new List<ItemData>();
+                bungie.DebugLog("------------------", bungie.LogFile);
+                foreach (ItemData itm in perkHashes[i])
+                {
+                    perkList[i + 1].Add(item);
+                }
+            }
+
+            for (int i = 1; i < perkHashes.Count + 1; i++) //Use perkHashes as a reference to how many columns we have. i.e if 3 columns. +1 so we can also account for the item in our first index.
+            {
+                bungie.DebugLog($"COLUMN {i}: ", bungie.LogFile);
+                foreach (ItemData perk in perkList[i])
+                {
+                    bungie.DebugLog($"{perk.DisplayProperties.Name}, ", bungie.LogFile);
+                }
+                bungie.DebugLog("", bungie.LogFile);
+            }
+            return perkList;
         }
         /// <summary>
         /// Take a base image and a smaller image. Overlays smaller image over the base, this is just a sample.
