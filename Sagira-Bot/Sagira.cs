@@ -109,7 +109,7 @@ namespace Sagira_Bot
                             itm.Year = 2;
                         else
                             itm.Year = 1;
-                        if (itm.Year == Year || Year == 0)
+                        if ((itm.Year == Year || Year == 0 ) && itm.Year > curSelection.Year)
                             curSelection = itm;
                 }
                 resultingItems.Add(curSelection);
@@ -122,14 +122,19 @@ namespace Sagira_Bot
                         itm.Year = 2;
                     else
                         itm.Year = 1;
+
                     if (itm.Year == Year || Year == 0)
                     {
-                        if(!(resultQueue.ContainsKey(itm.DisplayProperties.Name)))
+                        if (!resultQueue.ContainsKey(itm.DisplayProperties.Name))
+                        {
                             resultQueue[itm.DisplayProperties.Name] = itm;
+                        }
                         else
                         {
                             if(itm.Year == 2)
+                            {
                                 resultQueue[itm.DisplayProperties.Name] = itm;
+                            }
                         }
                     } 
                 }
