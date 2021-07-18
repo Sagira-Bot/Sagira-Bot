@@ -47,6 +47,12 @@ namespace Sagira_Bot
             PlugSetTable = new Dictionary<int, PlugSetData>();
             PullDbTables();
             bungie.CloseDB();
+
+            bungie.DebugLog($"Item Table Entries: {ItemTable.Count}" +
+                $"Y1 Weapon Table Entries: {Y1WeaponTable.Count}" +
+                $"Y2 Weapon Table Entries: {Y2WeaponTable.Count}" +
+                $"Plug Set Table Entries: {PlugSetTable.Count}", bungie.LogFile);
+
         }
 
         /// <summary>
