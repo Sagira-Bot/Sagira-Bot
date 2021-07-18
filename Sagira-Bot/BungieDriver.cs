@@ -75,21 +75,19 @@ namespace Sagira_Bot
         /// <returns>result of the query</returns>
         public List<string> QueryDBTimeout(string Query, bool Debug = false)
         {
-            //DB.Open();
             List<string> Results = new List<string>();
             try
             {
                 DebugLog($"Attempting to query db with: {Query}", LogFile);
-                //DB.Open();
                 var command = DB.CreateCommand();
                 command.CommandText = Query; //Assign our DB Command's text to our Query so when we exeucte our command we execute our desired query
                 using (var reader = command.ExecuteReader()) //Execute command via SQLite's DB Reader. 
                 {
                     while (reader.Read()) //While still getting results, progress until results are exhausted.
                     {
-                        Results.Add(reader.GetString(0));
+                        Results.Add(reader.GetString(1));
                         if (Debug)
-                            DebugLog(reader.GetString(0), LogFile);
+                            DebugLog(reader.GetString(1), LogFile);
 
                     }
                 }
@@ -99,11 +97,23 @@ namespace Sagira_Bot
                 Results = new List<string>();
                 Results.Add($"Failed to execute query: {Query}\nDue to error: {e}"); //Log any errors with query
             }
-            //DebugLog(result, LogFile);
-            //DB.Close();
             return Results;
         }
 
+        public Dictionary<int, string> QueryEntireDb(string Query)
+        {
+            Dictionary<int, string> DBTable = new Dictionary<int, string>();
+            var command = DB.CreateCommand();
+            command.CommandText = Query; //Assign our DB Command's text to our Query so when we exeucte our command we execute our desired query
+            using (var reader = command.ExecuteReader()) //Execute command via SQLite's DB Reader. 
+            {
+                while (reader.Read()) //While still getting results, progress until results are exhausted.
+                {
+                    DBTable[reader.GetInt32(0)] = reader.GetString(1);
+                }
+            }
+            return DBTable;
+        }
         /// <summary>
         /// Query DB with a Timeout. Just a helper for the above method and times out after 30s.
         /// </summary>
@@ -124,6 +134,14 @@ namespace Sagira_Bot
                 DebugLog("Query Timed Out", LogFile);
                 return new List<string>();
             }
+        }
+        public void CloseDB()
+        {
+            DB.Close();
+        }
+        public void OpenDB()
+        {
+            DB.Open();
         }
         /// <summary>
         /// Pull Manifest from BaseUrl+URL (which in our case is the en url). Results in a .zip file being downloaded.

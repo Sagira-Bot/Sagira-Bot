@@ -45,18 +45,18 @@ namespace Sagira_Bot.BotModules
 				Year = 1;
 			else if (Context.Message.Content.ToLower().IndexOf("curated") == 1)
 				isCurated = true;
-				List<ItemData> ItemList = sagira.GenerateItemList(GunName.ToLower(), Year);
+			List<ItemData> ItemList = sagira.GenerateItemList(GunName.ToLower(), Year);
 			if(ItemList == null || ItemList.Count == 0)
             {
 				await ReplyAsync($"Couldn't find{(Year != 0 ? $" Year {Year}" : "")} Weapon: {GunName}");
 				return;
 			}
+
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
 			if(ItemList.Count > 1)
             {
 				if (ItemList.Count < 7) //This will be configurable per server eventually. For the sake of time, we're keeping it at 6 (6s) due to preemptive rate limits.
 				{
-
 					string Title = $"Search Results for: {GunName}";
 					string Description = $"Please Select Desired Gun";
 					Dictionary<Emoji, string> gunList = new Dictionary<Emoji, string>();
@@ -120,7 +120,7 @@ namespace Sagira_Bot.BotModules
 				state = 3;
 
 			//Console.WriteLine($"{ItemList[gunSelection].DisplayProperties.Name} Year: {ItemList[gunSelection].Year} State: {state} ");
-			string disclaimer = $"Not all curated rolls actually drop in-game.{System.Environment.NewLine}* indicates curated perks that do not currently drop in-game.";
+			string disclaimer = $"Not all curated rolls actually drop in-game.{System.Environment.NewLine}* indicates perks that are only available on the curated roll.";
 			if (state == 1 || state == 2)
 				disclaimer = $"This version of {ItemList[gunSelection].DisplayProperties.Name} does not have random rolls, all perks are selectable.";
 			if (state == 3)
