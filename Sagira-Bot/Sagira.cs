@@ -57,10 +57,16 @@ namespace Sagira_Bot
             {
                 ItemData curItem = ParseItem(pair.Value);
                 ItemTable[pair.Key] = curItem;
-                if (pair.Value.Contains("item_type.weapon") && pair.Value.Contains("collectibleHash"))
-                    WeaponTable[pair.Key] = curItem;
-            }
+                if (pair.Value.Contains("item_type.weapon") && pair.Value.Contains("collectibleHash")) //Weapons only + weapons with collectibles (aka every real instance of a weapon. See: VOG weapons that have 2x weapon entries)
+                {
+                    if (pair.Value.Contains("randomizedPlugSetHash")) //Only random roll weapons have randomizedPlugSetHash, so label them as y2.
+                        curItem.Year = 2;
+                    else
+                        curItem.Year = 1;
 
+                    WeaponTable[pair.Key] = curItem;
+                }                   
+            }
             foreach (KeyValuePair<int, string> pair in psTable)
             {
                 PlugSetTable[pair.Key] = ParsePlug(pair.Value);
@@ -99,17 +105,12 @@ namespace Sagira_Bot
                     SubstringMatches.Add(pair.Value);
                 }
             }
-
             if(ExactMatches.Count > 0)
             {
                 ItemData curSelection = ExactMatches[0];
                 foreach(ItemData itm in ExactMatches)
                 {
-                        if (itm.Sockets.SocketEntries[1].RandomizedPlugSetHash != null)
-                            itm.Year = 2;
-                        else
-                            itm.Year = 1;
-                        if ((itm.Year == Year || Year == 0 ) && itm.Year > curSelection.Year)
+                    if ((itm.Year == Year || Year == 0 ) && itm.Year > curSelection.Year)
                             curSelection = itm;
                 }
                 resultingItems.Add(curSelection);
@@ -118,23 +119,18 @@ namespace Sagira_Bot
             {
                 foreach (ItemData itm in SubstringMatches)
                 {
-                    if (itm.Sockets.SocketEntries[1].RandomizedPlugSetHash != null)
-                        itm.Year = 2;
-                    else
-                        itm.Year = 1;
-
                     if (itm.Year == Year || Year == 0)
                     {
+                        //If we don't have an entry of this item queued for adding in our list, add regardless. 
+                        //Else only add if the entry will be replaced by a y2 version.
+                        //Else only there for the case where we find a y1 version then y2 after. If y2 is found first, the else if will never trigger
                         if (!resultQueue.ContainsKey(itm.DisplayProperties.Name))
                         {
                             resultQueue[itm.DisplayProperties.Name] = itm;
                         }
-                        else
+                        else if(itm.Year == 2)
                         {
-                            if(itm.Year == 2)
-                            {
-                                resultQueue[itm.DisplayProperties.Name] = itm;
-                            }
+                            resultQueue[itm.DisplayProperties.Name] = itm;
                         }
                     } 
                 }
