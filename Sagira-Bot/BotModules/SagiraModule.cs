@@ -140,7 +140,7 @@ namespace Sagira_Bot.BotModules
 			for(int i = 1; i < PerkDict.Length; i++)
             {
 				string reply = "";
-				if(PerkDict[i] != null)
+				if(PerkDict[i] != null && PerkDict[i].Count > 0)
                 {
 					foreach (KeyValuePair<string, string> perk in PerkDict[i])
 					{
@@ -163,10 +163,13 @@ namespace Sagira_Bot.BotModules
 							reply += $"{perk.Key}{System.Environment.NewLine}";
 						}
 					}
-					Embed.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
-					if (i % 2 == 0)
-					{
-						Embed.AddField(new EmbedFieldBuilder().WithName("\u200b").WithValue("\u200b").WithIsInline(false));
+					if(reply != "")
+                    {
+						Embed.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
+						if (i % 2 == 0)
+						{
+							Embed.AddField(new EmbedFieldBuilder().WithName("\u200b").WithValue("\u200b").WithIsInline(false));
+						}
 					}
 				}		
 			}
