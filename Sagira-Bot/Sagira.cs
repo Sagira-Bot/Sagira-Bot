@@ -143,22 +143,20 @@ namespace Sagira_Bot
         }
 
         /// <summary>
-        /// Search for a plug set in the plug set definition table after converting the plug set's hash to its id
-        /// Query returns a list of strings, but this is guaranteed to only provide 1 result or an error
+        /// Search for a plug set in the plug set definition dictionary after converting the plug set's hash to its id
         /// </summary>
         /// <param name="hash">Plug set's hash to convert into its id for selections</param>
-        /// <returns>JSON entry of the plug set</returns>
+        /// <returns>PlugSetData object found in dict</returns>
         public PlugSetData PullPlugFromHashes(long? hash, bool Debug = false)
         {
             return PlugSetTable[generateIDfromHash((long)hash)];
         }
 
         /// <summary>
-        /// Pull from the item db using an item's hash. Hash converted to id.
-        /// Query returns a list of strings, but this is guaranteed to only provide 1 result or an error
+        /// Pull from the item table using an item's hash. Hash converted to id.
         /// </summary>
-        /// <param name="hash"></param>
-        /// <returns>JSON entry of the item</returns>
+        /// <param name="hash">Item's hash to be converted</param>
+        /// <returns>ItemData object found in dict</returns>
         public ItemData PullItemFromHash(long? hash, bool Debug = false)
         {
             return ItemTable[generateIDfromHash((long)hash)];
@@ -196,10 +194,9 @@ namespace Sagira_Bot
 
         /// <summary>
         /// Takes PlugSetData and pulls a list of its available perks. Only returns currently available perks for now. 
-        /// Returns a list of longs since these aren't nullable. A plug set must have perks in a randomizedPlugSet.
         /// </summary>
         /// <param name="plug">PlugSet from an item's item data</param>
-        /// <returns>Returns a list of perks in a plugset</returns>
+        /// <returns>Returns a list of ItemData objects used to represent perks in a plugset</returns>
         public List<ItemData> PullPerksInSet(PlugSetData plug)
         {
             List<ItemData> perkHashes = new List<ItemData>();
@@ -213,12 +210,13 @@ namespace Sagira_Bot
 
         
         /// <summary>
-        /// Encapsulated workflow that takes an item name and generates a list of the perks available for that item per slot. 
-        /// Need to add consideration for static rolled items (i.e blues, exotics, y1, etc.)
-        /// Also need to add good error handling for when a non-gun item is used.
+        /// Minor workflow for generating a list of items that match an item name that includes some debugging and error handling
+        /// Brunt of the work is just calling PullItemListByName
+        /// If nothing is found, return an empty list. If something is found, return it all.
         /// </summary>
-        /// <param name="itemName">Name of the Item you're trying to look up</param>
-        /// <returns>Array of List objects. [0] will always be the original item. Every index i past 0 will be the list of available perks in the item's ith column.</returns>
+        /// <param name="itemName">Name of the item you're searching for, can be partial</param>
+        /// <param name="Year">Desired year of the item. Default is 0, but can pass in 1.</param>
+        /// <returns></returns>
         public List<ItemData> GenerateItemList(string itemName, int Year = 0)
         {
             try
@@ -243,13 +241,15 @@ namespace Sagira_Bot
         }
 
         /// <summary>
-        /// General workflow for the sake of the bot.
-        /// Instead of returning ItemData objects to consume elsewhere, we just pass in an array of string dictionaries meant to represent each perk column.
-        /// We use a Key-Value pair container so that we can ensure no duplicate perks are added (i.e Fatebringer having 2 explosive payloads) and so we can mark the state of each perk
-        /// i.e Perks are either: Intrinsic(intrinsic), Curated-Rollable (curated1), Curated-Unrollable(curated0), Random(random).
-        /// We use these markings to format the bot's resulting embed.
+        /// Takes an Item and generates a formatted Dictionary array of perks with Key: Perk Name, Value: Perk State. Each index of the array represents a column of the weapon (column 0 is intrinsic)
+        /// Perk State refers to 1 of 4 stats: Intrinsic Perk (intrinsic), Curated Non-Rollable (curated0), Curated Rollable (curated1),  Random only (random)
+        /// Note that some Curated rolls have perks appearing in different columns that they're random rollable in, these count as Curated Non-Rollable.
+        /// Perks are pulled in two ways. First we pull Curated rolls (also doubles as y1 rolls for most if not all guns) and mark them all as Curated Non-Rollable (intrinsic is marked as intrinsic). 
+        /// Curated rolls attempt to pull from ReusablePlugItems first, and if that fails try ReusablePlugSetHash, and as a final resort try SingleInitialItemHash.
+        /// Random rolls just try to pull from randomizedPlugSetHash. When we add random rolls, if any random roll is already found in that specific column's Dictionary entry, we set that perk's state from curated0 to curated1 to indicate rollable.
+        /// All other rolls are marked Random.
         /// </summary>
-        /// <param name="item">Item to pull perks from</param>
+        /// <param name="item"></param>
         /// <returns></returns>
         public Dictionary<string, string>[] GeneratePerkDict(ItemData item)
         {
