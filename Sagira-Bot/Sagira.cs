@@ -23,9 +23,9 @@ namespace Sagira_Bot
         readonly BungieDriver bungie; //Singleton, we just need one BungieDriver ever.
         const string itemTable = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
         const string perkSetTable = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
-        Dictionary<int, ItemData> ItemTable;
-        Dictionary<int, ItemData> WeaponTable;
-        Dictionary<int, PlugSetData> PlugSetTable;
+        readonly Dictionary<int, ItemData> ItemTable;
+        readonly Dictionary<int, ItemData> WeaponTable;
+        readonly Dictionary<int, PlugSetData> PlugSetTable;
         
         const long trackerDisabled = 2285418970; //Hash for Tracker Socket
         const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
@@ -87,6 +87,8 @@ namespace Sagira_Bot
             List<ItemData> resultingItems = new List<ItemData>();
             List<ItemData> ExactMatches = new List<ItemData>();
             List<ItemData> SubstringMatches = new List<ItemData>();
+            Dictionary<string, ItemData> resultQueue = new Dictionary<string, ItemData>();
+
             foreach(KeyValuePair<int, ItemData> pair in WeaponTable)
             {
                 if(pair.Value.DisplayProperties.Name.ToLower() == itemName.ToLower())
@@ -120,10 +122,21 @@ namespace Sagira_Bot
                         itm.Year = 2;
                     else
                         itm.Year = 1;
-                    if (itm.Year == Year ||  Year == 0)
-                        resultingItems.Add(itm);
-                    
-                }  
+                    if (itm.Year == Year || Year == 0)
+                    {
+                        if(!(resultQueue.ContainsKey(itm.DisplayProperties.Name)))
+                            resultQueue[itm.DisplayProperties.Name] = itm;
+                        else
+                        {
+                            if(itm.Year == 2)
+                                resultQueue[itm.DisplayProperties.Name] = itm;
+                        }
+                    } 
+                }
+                foreach(KeyValuePair<string, ItemData> pair in resultQueue)
+                {
+                    resultingItems.Add(pair.Value);
+                }
             }
             return resultingItems;
         }
