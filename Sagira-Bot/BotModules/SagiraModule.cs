@@ -16,6 +16,7 @@ namespace Sagira_Bot.BotModules
 		public InteractivityService interactions;
 		string[] NumberEmoji = new string[] { ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:" };
 		string[] NumberUnicodes = new string[] { "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣" };
+		//test
 		public SagiraModule(ItemHandler sagiraInstance, InteractivityService interact)
         {
 			sagira = sagiraInstance;
