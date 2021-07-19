@@ -143,18 +143,18 @@ namespace Sagira_Bot
                 List<ItemData> items = PullItemListByName(itemName, Year);
                 if (items.Count == 0)
                 {
-                    Console.WriteLine($"Could not find desired item: {itemName}", bungie.LogFile);
+                    Console.WriteLine($"Could not find desired item: {itemName}");
                     return new List<ItemData>();
                 }
                 foreach (ItemData item in items)
                 {
-                    Console.WriteLine($"Found Item: {item.DisplayProperties.Name}", bungie.LogFile);
+                    Console.WriteLine($"Found Item: {item.DisplayProperties.Name}");
                 }
                 return items;
             }
             catch (Exception e)
             {
-                Console.WriteLine("Item Request Failed Due To: " + e, bungie.LogFile);
+                Console.WriteLine("Item Request Failed Due To: " + e);
                 return new List<ItemData>();
             }
         }

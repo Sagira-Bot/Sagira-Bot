@@ -79,7 +79,7 @@ namespace Sagira_Bot.BotModules
 					return;
 				}
 			}
-
+			//Console.WriteLine($"Selected Gun Hash: {ItemList[gunSelection].Hash}");
 			Dictionary<string, string>[] PerkDict = sagira.GeneratePerkDict(ItemList[gunSelection]);
 			//Rich Embed starts here -- \u200b is 0 width space
 			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis
