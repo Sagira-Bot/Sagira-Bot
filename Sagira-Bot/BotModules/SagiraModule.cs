@@ -1,24 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Linq;
 using Discord.Commands;
 using Discord;
 using Interactivity;
-using Interactivity.Confirmation;
-using Interactivity.Pagination;
 using Interactivity.Selection;
 using System.Threading.Tasks;
+using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 
 namespace Sagira_Bot.BotModules
 {
     public class SagiraModule : ModuleBase<SocketCommandContext>
     {
-		public Sagira sagira;
+		public ItemHandler sagira;
 		public InteractivityService interactions;
 		string[] NumberEmoji = new string[] { ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:" };
 		string[] NumberUnicodes = new string[] { "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣" };
-		public SagiraModule(Sagira sagiraInstance, InteractivityService interact)
+		public SagiraModule(ItemHandler sagiraInstance, InteractivityService interact)
         {
 			sagira = sagiraInstance;
 			interactions = interact;
@@ -87,7 +85,7 @@ namespace Sagira_Bot.BotModules
 			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis
 			var dColor = Discord.Color.LightGrey;
 			string ele = "Kinetic";
-			switch (ItemList[gunSelection].DefaultDamageType)
+			switch ((int)ItemList[gunSelection].DefaultDamageType)
             {
 				case 1:
 					dColor = Discord.Color.LightGrey;
@@ -114,7 +112,7 @@ namespace Sagira_Bot.BotModules
 			int state = 0;
 			if (ItemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !sagira.RandomExotics.ContainsKey(GunName.ToLower()))
 				state = 1;
-			else if (Year == 1 || ItemList[gunSelection].Year == 1 )
+			else if (Year == 1 || !sagira.IsRandomRollable(ItemList[gunSelection]))
 				state = 2;
 			else if (isCurated)
 				state = 3;

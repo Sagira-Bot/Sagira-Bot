@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Reflection;
-using System.Collections.Generic;
-using System.Text;
 using Discord;
 using Discord.WebSocket;
 using Discord.Commands;

@@ -20,14 +20,14 @@ namespace Sagira_Bot
         {
             Commands = commands ?? new CommandService();
             DiscClient = client ?? new DiscordSocketClient();
-            Interactivity = intr ?? new InteractivityService(DiscClient);
+            Interactivity = intr ?? new InteractivityService(DiscClient);          
         }
 
         public IServiceProvider BuildServiceProvider() => new ServiceCollection()
             .AddSingleton(DiscClient)
             .AddSingleton(Commands)
             .AddSingleton(Interactivity)
-            .AddSingleton(new Sagira())
+            .AddSingleton(new ItemHandler())
             .BuildServiceProvider();
     }
 }
