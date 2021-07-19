@@ -12,7 +12,6 @@ namespace Sagira_Bot
 
     public class BungieDriver
     {
-        public readonly string LogFile = ""; //Combination of 2 env variables. Combines LOG=LOGFILENAME and LOGDIR=LOGFOLDERNAME. Same format as above in .env file, just pass in the name of the log, in my case it's "DEBUG.log" and "Logs"
         public readonly BungieApiClient bungieClient;
         public DestinyManifest Mani;
 
