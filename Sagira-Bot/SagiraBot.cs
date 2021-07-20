@@ -4,10 +4,10 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
 using System.Threading.Tasks;
-using dotenv.net;
 using Interactivity;
+using System.IO;
 
-namespace Sagira_Bot
+namespace Sagira
 {
     /// <summary>
     /// Very bare bones and generic implementation of a Discord.Net bot.
@@ -16,20 +16,30 @@ namespace Sagira_Bot
     /// </summary>
     class SagiraBot
     {
-        private readonly DiscordSocketClient DisClient;
-        private readonly CommandService CmdService;
-        private readonly IServiceProvider DIServices;
-        private readonly InteractivityService Interactivity;
-        private readonly string Token;
-        public readonly string Prefix;
-        public static void Main(string[] args) => new SagiraBot().MainAsync().GetAwaiter().GetResult();
-
-        public SagiraBot()
+        private DiscordSocketClient DisClient;
+        private CommandService CmdService;
+        private IServiceProvider DIServices;
+        private InteractivityService Interactivity;
+        private string Token;
+        public char Prefix;
+        //public static void Main(string[] args) => new SagiraBot().MainAsync().GetAwaiter().GetResult();
+        public async Task RunBot()
         {
-            DotEnv.Load();
-            var envs = DotEnv.Read();
-            Token = envs["BTOKEN"];
-            Prefix = envs["PREFIX"];
+            var Config = new SagiraConfiguration();
+            try
+            {
+                await Config.Load();
+            }
+            catch (Exception ex) when (ex is FileNotFoundException)
+            {
+                await SagiraConfiguration.SaveConfig(new SagiraConfiguration());
+                Console.WriteLine($"Please populate entries in \"{SagiraConfiguration.DefaultFileName}\"\nPress ENTER to exit.");
+                Console.ReadLine();
+                return;
+            }
+            Token = Config._discordBotToken;
+            Prefix = Config._defaultBotCommandPrefix;
+            ItemHandler Handler = new ItemHandler(Config._bungieApiKey);
             DisClient = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = LogSeverity.Debug,
@@ -45,9 +55,9 @@ namespace Sagira_Bot
             // Subscribe the logging handler to both the client and the CommandService.
             DisClient.Log += Log;
             CmdService.Log += Log;
-            DIServices = (new ServiceHandler(DisClient, CmdService, Interactivity)).BuildServiceProvider();
+            DIServices = (new ServiceHandler(Handler, DisClient, CmdService, Interactivity)).BuildServiceProvider();
+            await MainAsync();
         }
-
 
         private static Task Log(LogMessage message)
         {
@@ -104,7 +114,7 @@ namespace Sagira_Bot
             // Create a number to track where the prefix ends and the command begins
             int pos = 0;
 
-            if (msg.HasCharPrefix(Prefix.ToCharArray()[0], ref pos) || msg.HasMentionPrefix(DisClient.CurrentUser, ref pos))
+            if (msg.HasCharPrefix(Prefix, ref pos) || msg.HasMentionPrefix(DisClient.CurrentUser, ref pos))
             {
                 // Create a Command Context.
                 var context = new SocketCommandContext(DisClient, msg);

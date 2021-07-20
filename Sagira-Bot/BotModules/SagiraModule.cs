@@ -8,7 +8,7 @@ using Interactivity.Selection;
 using System.Threading.Tasks;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 
-namespace Sagira_Bot.BotModules
+namespace Sagira
 {
     public class SagiraModule : ModuleBase<SocketCommandContext>
     {

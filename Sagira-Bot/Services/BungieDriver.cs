@@ -1,13 +1,8 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using dotenv.net;
+﻿using System.Threading.Tasks;
 using BungieSharper.Client;
 using BungieSharper.Entities.Destiny.Config;
 
-//using RestSharp.Serialization.Json;
-
-namespace Sagira_Bot
+namespace Sagira
 {
 
     public class BungieDriver
@@ -15,12 +10,10 @@ namespace Sagira_Bot
         public readonly BungieApiClient bungieClient;
         public DestinyManifest Mani;
 
-        public BungieDriver()
-        {
-            DotEnv.Load(); //Load .env file
-            var envs = DotEnv.Read();          
+        public BungieDriver(string ApiKey)
+        {   
             var config = new BungieClientConfig();
-            config.ApiKey = envs["APIKEY"];
+            config.ApiKey = ApiKey;
             bungieClient = new BungieApiClient(config);
         }
 

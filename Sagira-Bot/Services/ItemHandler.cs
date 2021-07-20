@@ -8,7 +8,7 @@ using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItem
 using PlugSetData = BungieSharper.Entities.Destiny.Definitions.Sockets.DestinyPlugSetDefinition;
 using SocketEntry = BungieSharper.Entities.Destiny.Definitions.DestinyItemSocketEntryDefinition;
 
-namespace Sagira_Bot
+namespace Sagira
 {
     /// <summary>
     /// This is the main DB handler class. It interacts with the db initialized in BungieDriver and parses information as needed. 
@@ -42,9 +42,9 @@ namespace Sagira_Bot
             {"dead man's tale",""}
         };
 
-        public ItemHandler()
+        public ItemHandler(string bungieApiKey = "")
         {
-            bungie = new BungieDriver(); //init
+            bungie = new BungieDriver(bungieApiKey); //init
             ItemTable = new();
             Y1WeaponTable = new();
             Y2WeaponTable = new();
