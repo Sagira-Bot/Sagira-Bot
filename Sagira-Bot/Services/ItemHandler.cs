@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Linq;
-using NLog;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 using PlugSetData = BungieSharper.Entities.Destiny.Definitions.Sockets.DestinyPlugSetDefinition;
 using SocketEntry = BungieSharper.Entities.Destiny.Definitions.DestinyItemSocketEntryDefinition;
 
-namespace Sagira_Bot
+namespace Sagira.Services
 {
     /// <summary>
     /// This is the main DB handler class. It interacts with the db initialized in BungieDriver and parses information as needed. 
@@ -42,9 +41,9 @@ namespace Sagira_Bot
             {"dead man's tale",""}
         };
 
-        public ItemHandler()
+        public ItemHandler(string bungieApiKey = "")
         {
-            bungie = new BungieDriver(); //init
+            bungie = new BungieDriver(bungieApiKey); //init
             ItemTable = new();
             Y1WeaponTable = new();
             Y2WeaponTable = new();
@@ -143,18 +142,18 @@ namespace Sagira_Bot
                 List<ItemData> items = PullItemListByName(itemName, Year);
                 if (items.Count == 0)
                 {
-                    Console.WriteLine($"Could not find desired item: {itemName}", bungie.LogFile);
+                    Console.WriteLine($"Could not find desired item: {itemName}");
                     return new List<ItemData>();
                 }
                 foreach (ItemData item in items)
                 {
-                    Console.WriteLine($"Found Item: {item.DisplayProperties.Name}", bungie.LogFile);
+                    Console.WriteLine($"Found Item: {item.DisplayProperties.Name}");
                 }
                 return items;
             }
             catch (Exception e)
             {
-                Console.WriteLine("Item Request Failed Due To: " + e, bungie.LogFile);
+                Console.WriteLine("Item Request Failed Due To: " + e);
                 return new List<ItemData>();
             }
         }
