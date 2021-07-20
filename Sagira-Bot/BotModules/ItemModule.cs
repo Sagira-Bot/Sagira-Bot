@@ -1,85 +1,86 @@
-﻿using Discord.Commands;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Discord;
+using System.Threading.Tasks;
 using Sagira.Services;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
+using Discord.WebSocket;
+using System.Drawing;
 
 namespace Sagira.Modules
 {
-    public class SagiraModule : ModuleBase<SocketCommandContext>
+    public class ItemModule
     {
-		public ItemHandler sagira;
-		private InteractionService interactions;
+		
+		public ItemHandler Handler;
+		public InteractionService interactions;
 		private readonly Constants Consts;
-		public SagiraModule(ItemHandler sagiraInstance, Constants Con, InteractionService interact)
-        {
-			sagira = sagiraInstance;
-			interactions = interact;
-			Consts = Con;
-        }
-		/*
-		/// <summary>
-		/// Take gun name -> Search for it
-		/// If search vague -> Prompt user to select one of various, unless it's TOO vague, then tell user to be more specific
-		/// Once user answers prompt via reaction -> Set state based on chosen gun and params. 
-		/// Once state is set -> Start generating embed and build it up as we parse our perk dictionary
-		/// </summary>
-		/// <param name="GunName"></param>
-		/// <returns></returns>
-		[Command("rolls", RunMode = RunMode.Async)]
-		[Alias("y1", "curated")]
-		[Summary("Takes gun name, and optional param year (1 or 2), and generates all possible perks")]
-		public async Task RollsAsync([Remainder] string GunName)
-        {
-			int Year = 0;
+		public ItemModule(ItemHandler HandlerInstance, InteractionService intr)
+		{
+			Handler = HandlerInstance;
+			interactions = intr;
+			Consts = new Constants();
+		}
+
+		public async Task RollsAsync(SocketSlashCommand command, int Year = 0, bool isCurated = false)
+		{
 			int gunSelection = 0;
-			bool isCurated = false;
-			//Check based on alias which context we should work with.
-			if (Context.Message.Content.ToLower().IndexOf("y1") == 1)
-				Year = 1;
-			else if (Context.Message.Content.ToLower().IndexOf("curated") == 1)
-				isCurated = true;
-			List<ItemData> ItemList = sagira.GenerateItemList(GunName.ToLower(), Year);
-			if(ItemList == null || ItemList.Count == 0)
-            {
-				await ReplyAsync($"Couldn't find{(Year != 0 ? $" Year {Year}" : "")} Weapon: {GunName}");
+			string GunName = (string)command.Data.Options.First().Value;
+
+			List<ItemData> ItemList = Handler.GenerateItemList(GunName.ToLower(), Year);
+			if (ItemList == null || ItemList.Count == 0)
+			{
+				await command.RespondAsync($"Couldn't find{(Year != 0 ? $" Year {Year}" : "")} Weapon: {GunName}");
 				return;
 			}
 
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
-			if(ItemList.Count > 1)
-            {
-				if (ItemList.Count < 7) //This will be configurable per server eventually. For the sake of time, we're keeping it at 6 (6s) due to preemptive rate limits.
+			if (ItemList.Count > 1)
+			{
+				if (ItemList.Count < 8)
 				{
-					string Title = $"Search Results for: {GunName}";
-					string Description = $"Please Select Desired Gun";
 					Dictionary<Emoji, string> gunList = new Dictionary<Emoji, string>();
 					Dictionary<string, int> gunIndexes = new Dictionary<string, int>();
+					var EmbedSelection = new EmbedBuilder()
+					{
+						Title = $"Search Results for: \"{GunName}\"",
+						Description = $"Please Select Desired Gun"
+					};
+					var Components = new ComponentBuilder();
 					for (int i = 0; i < ItemList.Count; i++)
 					{
-						gunList[new Emoji(Consts.NumberUnicodes[i + 1])] = $"{ItemList[i].DisplayProperties.Name}";
+						Components.WithButton($"{ItemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i/4));
 						gunIndexes[ItemList[i].DisplayProperties.Name] = i;
 					}
-					var builder = new ReactionSelectionBuilder<string>()
-									.WithSelectables(gunList).WithUsers(Context.User).WithDeletion(DeletionOptions.AfterCapturedContext | DeletionOptions.Invalids).WithTitle(Title);
-					var result = await interactions.SendSelectionAsync(builder.Build(), Context.Channel, TimeSpan.FromSeconds(50));
-
-					if (result.IsSuccess)
-					{
-						gunSelection = gunIndexes[result.Value.ToString()];
+					var msg = await command.Channel.SendMessageAsync(text:$"Search results for: \"{GunName}\" ", isTTS: false, component: Components.Build());
+					var Response = await interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id));
+                    try
+                    {
+						gunSelection = Int32.Parse(Response.Data.CustomId);
+						await msg.DeleteAsync();
+					}
+					catch(Exception e)
+                    {
+						await command.RespondAsync($"No search selected in time.");
+						return;
 					}
 				}
 				else
 				{
-					await ReplyAsync($"{Context.User.Mention} 's search for {GunName} produced too many results. Please be more specific.");
+					await command.RespondAsync($"{command.User.Mention} 's search for {GunName} produced too many results. Please be more specific.");
 					return;
 				}
 			}
+
+			
 			//Console.WriteLine($"Selected Gun Hash: {ItemList[gunSelection].Hash}");
-			Dictionary<string, string>[] PerkDict = sagira.GeneratePerkDict(ItemList[gunSelection]);
+			Dictionary<string, string>[] PerkDict = Handler.GeneratePerkDict(ItemList[gunSelection]);
 			//Rich Embed starts here -- \u200b is 0 width space
 			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis			
 			string ele = "Kinetic";
 			switch ((int)ItemList[gunSelection].DefaultDamageType)
-            {
+			{
 				case 1:
 					ele = "Kinetic";
 					break;
@@ -95,13 +96,13 @@ namespace Sagira.Modules
 				case 6:
 					ele = "Stasis";
 					break;
-            }
+			}
 			var dColor = ColorTranslator.FromHtml(Consts.ColorDict[ele]);
 			//State 0 = Default, Regular y2 gun or random roll exotic. 1 = Non-Random Exotic. 2 = Year 1 gun. 3 = Curated of Any gun that isn't exotic. 
 			int state = 0;
-			if (ItemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !sagira.RandomExotics.ContainsKey(GunName.ToLower()))
+			if (ItemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !Handler.RandomExotics.ContainsKey(GunName.ToLower()))
 				state = 1;
-			else if (Year == 1 || !sagira.IsRandomRollable(ItemList[gunSelection]))
+			else if (Year == 1 || !Handler.IsRandomRollable(ItemList[gunSelection]))
 				state = 2;
 			else if (isCurated)
 				state = 3;
@@ -124,11 +125,11 @@ namespace Sagira.Modules
 			};
 			//Start from 1 to skip intrinsic. Per Column create an in-line embed field with perks.
 			//Bold curated perks, and add a * after their name to indicate unrollable curated perk.
-			for(int i = 1; i < PerkDict.Length; i++)
-            {
+			for (int i = 1; i < PerkDict.Length; i++)
+			{
 				string reply = "";
-				if(PerkDict[i] != null && PerkDict[i].Count > 0)
-                {
+				if (PerkDict[i] != null && PerkDict[i].Count > 0)
+				{
 					foreach (KeyValuePair<string, string> perk in PerkDict[i])
 					{
 						if (state == 0)
@@ -150,26 +151,22 @@ namespace Sagira.Modules
 							reply += $"{perk.Key}{System.Environment.NewLine}";
 						}
 					}
-					if(reply != "")
-                    {
+					if (reply != "")
+					{
 						Embed.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
 						if (i % 2 == 0)
 						{
 							Embed.AddField(new EmbedFieldBuilder().WithName("\u200b").WithValue("\u200b").WithIsInline(false));
 						}
 					}
-				}		
+				}
 			}
-			await ReplyAsync("", false, Embed.Build());
+			var ResourceLinks = new ComponentBuilder();
+				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("Light.gg").WithStyle(ButtonStyle.Link).WithUrl(@"https://www.light.gg/db/items/" + ItemList[gunSelection].Hash)); 
+				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("D2 Gunsmith").WithStyle(ButtonStyle.Link).WithUrl(@"https://d2gunsmith.com/w/" + ItemList[gunSelection].Hash)); 
+			await command.Channel.SendMessageAsync("", false, embed: Embed.Build(), component: ResourceLinks.Build());
 			return;
 		}
-
-		[Command("help")]
-		[Summary("Spits out usage string")]
-		public Task HelpAsync()
-		{
-			return ReplyAsync($"The general usage of this bot is to display potential rolls for desired weapons.{System.Environment.NewLine}Basic usage: {Context.Message.Content[0]}rolls WEAPON-NAME {System.Environment.NewLine}You may also use: [{Context.Message.Content[0]}Curated and {Context.Message.Content[0]}y1]");
-		}
-*/
-	}
+	}	
 }
+
