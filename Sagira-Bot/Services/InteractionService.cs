@@ -43,7 +43,7 @@ namespace Sagira.Services
 
             try
             {
-                await DeleteSlashCommands(DebugServerID);
+                //await DeleteSlashCommands(DebugServerID);
                 foreach (var cmd in Commands)
                 {
                     if (DebugServerID != 0)

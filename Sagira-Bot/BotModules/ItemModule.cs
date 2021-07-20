@@ -161,7 +161,10 @@ namespace Sagira.Modules
 					}
 				}
 			}
-			await command.RespondAsync("", false, Embed.Build());
+			var ResourceLinks = new ComponentBuilder();
+				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("Light.gg").WithStyle(ButtonStyle.Link).WithUrl(@"https://www.light.gg/db/items/" + ItemList[gunSelection].Hash)); 
+				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("D2 Gunsmith").WithStyle(ButtonStyle.Link).WithUrl(@"https://d2gunsmith.com/w/" + ItemList[gunSelection].Hash)); 
+			await command.Channel.SendMessageAsync("", false, embed: Embed.Build(), component: ResourceLinks.Build());
 			return;
 		}
 	}	
