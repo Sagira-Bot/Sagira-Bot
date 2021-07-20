@@ -10,7 +10,7 @@ using Sagira.Services;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 using System.Drawing;
 
-namespace Sagira
+namespace Sagira.Modules
 {
     public class SagiraModule : ModuleBase<SocketCommandContext>
     {
