@@ -23,9 +23,9 @@
 
   <ItemGroup>
     <PackageReference Include="BungieSharper" Version="0.8.1" />
-    <PackageReference Include="Discord.InteractivityAddon" Version="2.4.0" />
-    <PackageReference Include="Discord.Net" Version="2.4.0" />
-    <PackageReference Include="Discord.Net.Core" Version="2.4.0" />
+    <PackageReference Include="Discord.InteractivityAddon.Labs" Version="2.4.1-labs-20210709.1" />
+    <PackageReference Include="Discord.Net.Labs" Version="2.4.9" />
+    <PackageReference Include="Discord.Net.Labs.Core" Version="2.4.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.2" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="5.0.0" />
     <PackageReference Include="System.Drawing.Common" Version="5.0.2" />
