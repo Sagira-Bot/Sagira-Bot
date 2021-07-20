@@ -6,7 +6,9 @@ using Discord;
 using Interactivity;
 using Interactivity.Selection;
 using System.Threading.Tasks;
+using Sagira.Services;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
+using System.Drawing;
 
 namespace Sagira
 {
@@ -14,12 +16,14 @@ namespace Sagira
     {
 		public ItemHandler sagira;
 		public InteractivityService interactions;
+		private readonly Constants Consts;
 		string[] NumberEmoji = new string[] { ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:" };
 		string[] NumberUnicodes = new string[] { "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣" };
-		public SagiraModule(ItemHandler sagiraInstance, InteractivityService interact)
+		public SagiraModule(ItemHandler sagiraInstance, InteractivityService interact, Constants Con)
         {
 			sagira = sagiraInstance;
 			interactions = interact;
+			Consts = Con;
         }
 
 		/// <summary>
@@ -82,32 +86,27 @@ namespace Sagira
 			//Console.WriteLine($"Selected Gun Hash: {ItemList[gunSelection].Hash}");
 			Dictionary<string, string>[] PerkDict = sagira.GeneratePerkDict(ItemList[gunSelection]);
 			//Rich Embed starts here -- \u200b is 0 width space
-			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis
-			var dColor = Discord.Color.LightGrey;
+			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis			
 			string ele = "Kinetic";
 			switch ((int)ItemList[gunSelection].DefaultDamageType)
             {
 				case 1:
-					dColor = Discord.Color.LightGrey;
 					ele = "Kinetic";
 					break;
 				case 2:
-					dColor = Discord.Color.Blue;
 					ele = "Arc";
 					break;
 				case 3:
-					dColor = Discord.Color.Orange;
 					ele = "Solar";
 					break;
 				case 4:
-					dColor = Discord.Color.Purple;
 					ele = "Void";
 					break;
 				case 6:
-					dColor = Discord.Color.DarkBlue;
 					ele = "Stasis";
 					break;
             }
+			var dColor = ColorTranslator.FromHtml(Consts.ColorDict[ele]);
 			//State 0 = Default, Regular y2 gun or random roll exotic. 1 = Non-Random Exotic. 2 = Year 1 gun. 3 = Curated of Any gun that isn't exotic. 
 			int state = 0;
 			if (ItemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !sagira.RandomExotics.ContainsKey(GunName.ToLower()))
@@ -130,7 +129,7 @@ namespace Sagira
 				ThumbnailUrl = $"https://www.bungie.net{ItemList[gunSelection].DisplayProperties.Icon}",
 				Title = $"{ItemList[gunSelection].DisplayProperties.Name}",
 				Description = $"{ItemList[gunSelection].Inventory.TierTypeName} {ele} {ItemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine} Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
-				Color = dColor,
+				Color = (Discord.Color)dColor,
 				Footer = new EmbedFooterBuilder().WithText(disclaimer)
 			};
 			//Start from 1 to skip intrinsic. Per Column create an in-line embed field with perks.

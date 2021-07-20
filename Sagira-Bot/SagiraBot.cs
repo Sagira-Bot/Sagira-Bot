@@ -6,6 +6,7 @@ using Discord.Commands;
 using System.Threading.Tasks;
 using Interactivity;
 using System.IO;
+using Sagira.Services;
 
 namespace Sagira
 {

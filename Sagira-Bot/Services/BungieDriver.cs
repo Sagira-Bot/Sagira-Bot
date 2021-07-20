@@ -2,7 +2,7 @@
 using BungieSharper.Client;
 using BungieSharper.Entities.Destiny.Config;
 
-namespace Sagira
+namespace Sagira.Services
 {
 
     public class BungieDriver

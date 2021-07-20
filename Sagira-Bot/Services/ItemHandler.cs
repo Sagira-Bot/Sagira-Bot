@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Linq;
-using NLog;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 using PlugSetData = BungieSharper.Entities.Destiny.Definitions.Sockets.DestinyPlugSetDefinition;
 using SocketEntry = BungieSharper.Entities.Destiny.Definitions.DestinyItemSocketEntryDefinition;
 
-namespace Sagira
+namespace Sagira.Services
 {
     /// <summary>
     /// This is the main DB handler class. It interacts with the db initialized in BungieDriver and parses information as needed. 

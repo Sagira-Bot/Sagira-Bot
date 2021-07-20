@@ -4,7 +4,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Interactivity;
 
-namespace Sagira
+namespace Sagira.Services
 {
 
     public class ServiceHandler
@@ -14,15 +14,17 @@ namespace Sagira
         private readonly DiscordSocketClient DiscClient;
         private readonly InteractivityService Interactivity;
         private readonly ItemHandler Handler;
+        private readonly Constants Consts;
         // Ask if there are existing CommandService and DiscordSocketClient
         // instance. If there are, we retrieve them and add them to the
         // DI container; if not, we create our own.
         public ServiceHandler(ItemHandler handlr, DiscordSocketClient client = null, CommandService commands = null, InteractivityService intr = null)
         {
+            Handler = handlr;
             Commands = commands ?? new CommandService();
             DiscClient = client ?? new DiscordSocketClient();
             Interactivity = intr ?? new InteractivityService(DiscClient);
-            Handler = handlr;         
+            Consts = new Constants();      
         }
 
         public IServiceProvider BuildServiceProvider() => new ServiceCollection()
@@ -30,6 +32,7 @@ namespace Sagira
             .AddSingleton(Commands)
             .AddSingleton(Interactivity)
             .AddSingleton(Handler)
+            .AddSingleton(Consts)
             .BuildServiceProvider();
     }
 }

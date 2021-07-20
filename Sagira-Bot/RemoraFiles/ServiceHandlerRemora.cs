@@ -1,13 +1,11 @@
-﻿using System;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Commands.Extensions;
 using Remora.Commands.Extensions;
 using Remora.Discord.Caching.Extensions;
-using Remora.Results;
 using Sagira.Commands;
-
+using Sagira.Services;
 namespace Sagira.Remora
 {
     class ServiceHandlerRemora
