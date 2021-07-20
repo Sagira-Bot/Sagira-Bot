@@ -12,5 +12,9 @@ namespace Sagira.Services
 			{ "Kinetic", "#FFFFFF" },
 			{ "Stasis", "#4D88FF" }
 		};
+
+		public readonly string[] NumberUnicodes = new string[] { "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣" };
+		public readonly string[] NumberEmoji = new string[] { ":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:", ":nine:" };
+		public readonly string BlankChar = "\u200b";
 	}
 }

@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Interactivity;
 using System.IO;
 using Sagira.Services;
+using Discord.Net;
+using Newtonsoft.Json;
 
 namespace Sagira
 {
@@ -20,7 +22,7 @@ namespace Sagira
         private DiscordSocketClient DisClient;
         private CommandService CmdService;
         private IServiceProvider DIServices;
-        private InteractivityService Interactivity;
+        private InteractionService InterServ; //Slash-Commands and the Like
         private string Token;
         public char Prefix;
         //public static void Main(string[] args) => new SagiraBot().MainAsync().GetAwaiter().GetResult();
@@ -41,22 +43,26 @@ namespace Sagira
             Token = Config._discordBotToken;
             Prefix = Config._defaultBotCommandPrefix;
             ItemHandler Handler = new ItemHandler(Config._bungieApiKey);
+
             DisClient = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = LogSeverity.Debug,
                 MessageCacheSize = 50,
+                //AlwaysAcknowledgeInteractions = false,
             });
-
+            InterServ = new InteractionService(DisClient, Handler, Config._debugServerID);
+            DisClient.InteractionCreated += InterServ.Client_InteractionCreated;
+            DisClient.Ready += InterServ.OnClientReady;
             CmdService = new CommandService(new CommandServiceConfig
             {
                 LogLevel = LogSeverity.Debug,
                 CaseSensitiveCommands = false,
             });
-            Interactivity = new InteractivityService(DisClient);
+            
             // Subscribe the logging handler to both the client and the CommandService.
             DisClient.Log += Log;
             CmdService.Log += Log;
-            DIServices = (new ServiceHandler(Handler, DisClient, CmdService, Interactivity)).BuildServiceProvider();
+            DIServices = (new ServiceHandler(DisClient, CmdService, InterServ, Handler)).BuildServiceProvider();
             await MainAsync();
         }
 
@@ -103,6 +109,25 @@ namespace Sagira
             DisClient.MessageReceived += HandleCommandAsync;
         }
 
+        private async Task BuildSlashCommands()
+        {
+            var globalCommand = new SlashCommandBuilder();
+            globalCommand.WithName("rolls");
+            globalCommand.WithDescription("Pull a weapon's rolls");
+
+            try { 
+                await DisClient.Rest.CreateGlobalCommand(globalCommand.Build());
+            }
+            catch (ApplicationCommandException exception)
+            {
+                // If our command was invalid, we should catch an ApplicationCommandException. This exception contains the path of the error as well as the error message. You can serialize the Error field in the exception to get a visual of where your error is.
+                var json = JsonConvert.SerializeObject(exception.Error, Formatting.Indented);
+
+                // You can send this error somewhere or just print it to the console, for this example we're just going to print it.
+                Console.WriteLine(json);
+            }
+        }
+
         private async Task HandleCommandAsync(SocketMessage arg)
         {
             // Bail out if it's a System Message.
@@ -128,5 +153,8 @@ namespace Sagira
                     await msg.Channel.SendMessageAsync(result.ErrorReason);
             }
         }
+
+        
+
     }
 }
