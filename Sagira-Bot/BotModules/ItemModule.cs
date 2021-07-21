@@ -31,7 +31,7 @@ namespace Sagira.Modules
 			List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
 			if (itemList == null || itemList.Count == 0)
 			{
-				await command.RespondAsync($"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: {gunName}");
+				await command.FollowupAsync(null, text: $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: {gunName}");
 				return;
 			}
 
@@ -63,13 +63,13 @@ namespace Sagira.Modules
 					catch(Exception e)
                     {
 						await msg.DeleteAsync();
-						await command.RespondAsync($"No search result selected in time.");
+						await command.FollowupAsync(null, text: $"No search result selected in time.");
 						return;
 					}
 				}
 				else
 				{
-					await command.RespondAsync($"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
+					await command.FollowupAsync(null, text: $"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
 					return;
 				}
 			}
@@ -172,7 +172,7 @@ namespace Sagira.Modules
 					.WithStyle(ButtonStyle.Link)
 					.WithUrl(@"https://d2gunsmith.com/w/" + itemList[gunSelection].Hash));
 
-			await command.FollowupAsync(new Embed[] { gunInfo.Build() }, "", false, false, default, null, null, resourceLinks.Build()); 
+			await command.FollowupAsync(new Embed[] { gunInfo.Build() }, component: resourceLinks.Build()); 
 			return;
 		}
 	}	
