@@ -8,12 +8,10 @@ namespace Sagira.Modules
     {
 		public ItemHandler sagira;
 		private InteractionService interactions;
-		private readonly Constants Consts;
-		public SagiraModule(ItemHandler sagiraInstance, Constants Con, InteractionService interact)
+		public SagiraModule(ItemHandler sagiraInstance, InteractionService interact)
         {
 			sagira = sagiraInstance;
 			interactions = interact;
-			Consts = Con;
         }
 		/*
 		/// <summary>

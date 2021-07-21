@@ -13,7 +13,6 @@ namespace Sagira.Services
         private readonly DiscordSocketClient DiscClient;
         private readonly InteractionService Interactions;
         private readonly ItemHandler Handler;
-        private readonly Constants Consts;
         
         // Ask if there are existing CommandService and DiscordSocketClient
         // instance. If there are, we retrieve them and add them to the
@@ -23,8 +22,7 @@ namespace Sagira.Services
             Commands = commands ?? new CommandService();
             DiscClient = client ?? new DiscordSocketClient();
             Handler = Handle ?? new ItemHandler();
-            Interactions = intr ?? new InteractionService(DiscClient, Handler);
-            Consts = new Constants();      
+            Interactions = intr ?? new InteractionService(DiscClient, Handler);    
         }
 
         public IServiceProvider BuildServiceProvider() => new ServiceCollection()
@@ -32,7 +30,6 @@ namespace Sagira.Services
             .AddSingleton(Commands)
             .AddSingleton(Handler)
             .AddSingleton(Interactions)
-            .AddSingleton(Consts)
             .BuildServiceProvider();
     }
 }
