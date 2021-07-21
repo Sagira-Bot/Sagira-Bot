@@ -23,6 +23,7 @@ namespace Sagira.Modules
 
 		public async Task RollsAsync(SocketSlashCommand command, int Year = 0, bool isCurated = false)
 		{
+			//await command.AcknowledgeAsync();
 			int gunSelection = 0;
 			string GunName = (string)command.Data.Options.First().Value;
 
@@ -113,7 +114,7 @@ namespace Sagira.Modules
 				disclaimer = $"Not all curated rolls actually drop in-game.";
 
 			//Initialize EmbedBuilder with our context.
-			var Embed = new EmbedBuilder
+			var gunInfo = new EmbedBuilder
 			{
 				ThumbnailUrl = $"https://www.bungie.net{ItemList[gunSelection].DisplayProperties.Icon}",
 				Title = $"{ItemList[gunSelection].DisplayProperties.Name}",
@@ -151,10 +152,10 @@ namespace Sagira.Modules
 					}
 					if (reply != "")
 					{
-						Embed.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
+						gunInfo.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
 						if (i % 2 == 0)
 						{
-							Embed.AddField(new EmbedFieldBuilder().WithName(Constants.BlankChar).WithValue(Constants.BlankChar).WithIsInline(false));
+							gunInfo.AddField(new EmbedFieldBuilder().WithName(Constants.BlankChar).WithValue(Constants.BlankChar).WithIsInline(false));
 						}
 					}
 				}
@@ -162,10 +163,7 @@ namespace Sagira.Modules
 			var ResourceLinks = new ComponentBuilder();
 				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("Light.gg").WithStyle(ButtonStyle.Link).WithUrl(@"https://www.light.gg/db/items/" + ItemList[gunSelection].Hash)); 
 				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("D2 Gunsmith").WithStyle(ButtonStyle.Link).WithUrl(@"https://d2gunsmith.com/w/" + ItemList[gunSelection].Hash));
-			var CompBuilt = ResourceLinks.Build();
-			await command.Channel.SendMessageAsync("", false, embed: Embed.Build(), component: ResourceLinks.Build());
-			//await command.RespondAsync(text: "", isTTS: false, component: CompBuilt, embed: Embed.Build()); -> Broken for now
-			await command.RespondAsync(Constants.BlankChar);
+			await command.RespondAsync("", false, embed: gunInfo.Build(), component: ResourceLinks.Build()); 
 			return;
 		}
 	}	

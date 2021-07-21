@@ -40,7 +40,9 @@ namespace Sagira.Services
                 .WithName("curated")
                 .WithDescription("Lists a weapon's curated roll")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", required: true));
-
+            Commands.Add(new SlashCommandBuilder()
+                .WithName("botinfo")
+                .WithDescription("Lists information about this bot"));
             try
             {
                 await DeleteSlashCommands();
@@ -55,7 +57,7 @@ namespace Sagira.Services
                     else
                     {
                         Console.WriteLine("Loading Global Commands");
-                        //await DisClient.Rest.CreateGlobalCommand(cmd.Build());
+                        await DisClient.Rest.CreateGlobalCommand(cmd.Build());
                     }
                 }
                     
@@ -91,6 +93,9 @@ namespace Sagira.Services
                     break;
                 case "curated":
                     await (new ItemModule(Handler, this)).RollsAsync(command, 0, true);
+                    break;
+                case "botinfo":
+                    await command.RespondAsync("This bot currently has the slash commands: rolls, year1, and curated. These commands will each pull a gun and all relevant perks based on the command used.");
                     break;
             }
             return;

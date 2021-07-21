@@ -48,7 +48,7 @@ namespace Sagira
             {
                 LogLevel = LogSeverity.Debug,
                 MessageCacheSize = 50,
-                //AlwaysAcknowledgeInteractions = false,
+                AlwaysAcknowledgeInteractions = false,
             });
             InterServ = new InteractionService(DisClient, Handler, Config._debugServerID);
             DisClient.InteractionCreated += InterServ.Client_InteractionCreated;
