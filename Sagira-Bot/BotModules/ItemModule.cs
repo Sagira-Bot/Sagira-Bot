@@ -15,12 +15,10 @@ namespace Sagira.Modules
 		
 		public ItemHandler Handler;
 		public InteractionService interactions;
-		private readonly Constants Consts;
 		public ItemModule(ItemHandler HandlerInstance, InteractionService intr)
 		{
 			Handler = HandlerInstance;
 			interactions = intr;
-			Consts = new Constants();
 		}
 
 		public async Task RollsAsync(SocketSlashCommand command, int Year = 0, bool isCurated = false)
@@ -97,7 +95,7 @@ namespace Sagira.Modules
 					ele = "Stasis";
 					break;
 			}
-			var dColor = ColorTranslator.FromHtml(Consts.ColorDict[ele]);
+			var dColor = ColorTranslator.FromHtml(Constants.ColorDict[ele]);
 			//State 0 = Default, Regular y2 gun or random roll exotic. 1 = Non-Random Exotic. 2 = Year 1 gun. 3 = Curated of Any gun that isn't exotic. 
 			int state = 0;
 			if (ItemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !Handler.RandomExotics.ContainsKey(GunName.ToLower()))
@@ -156,15 +154,18 @@ namespace Sagira.Modules
 						Embed.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
 						if (i % 2 == 0)
 						{
-							Embed.AddField(new EmbedFieldBuilder().WithName("\u200b").WithValue("\u200b").WithIsInline(false));
+							Embed.AddField(new EmbedFieldBuilder().WithName(Constants.BlankChar).WithValue(Constants.BlankChar).WithIsInline(false));
 						}
 					}
 				}
 			}
 			var ResourceLinks = new ComponentBuilder();
 				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("Light.gg").WithStyle(ButtonStyle.Link).WithUrl(@"https://www.light.gg/db/items/" + ItemList[gunSelection].Hash)); 
-				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("D2 Gunsmith").WithStyle(ButtonStyle.Link).WithUrl(@"https://d2gunsmith.com/w/" + ItemList[gunSelection].Hash)); 
+				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("D2 Gunsmith").WithStyle(ButtonStyle.Link).WithUrl(@"https://d2gunsmith.com/w/" + ItemList[gunSelection].Hash));
+			var CompBuilt = ResourceLinks.Build();
 			await command.Channel.SendMessageAsync("", false, embed: Embed.Build(), component: ResourceLinks.Build());
+			//await command.RespondAsync(text: "", isTTS: false, component: CompBuilt, embed: Embed.Build()); -> Broken for now
+			await command.RespondAsync(Constants.BlankChar);
 			return;
 		}
 	}	

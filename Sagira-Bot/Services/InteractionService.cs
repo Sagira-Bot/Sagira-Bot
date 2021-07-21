@@ -26,7 +26,7 @@ namespace Sagira.Services
 
         public async Task OnClientReady()
         {           
-            List<SlashCommandBuilder> Commands = new();
+            List<SlashCommandBuilder> Commands = new List<SlashCommandBuilder>();
 
             Commands.Add(new SlashCommandBuilder()
                 .WithName("rolls")
@@ -43,17 +43,19 @@ namespace Sagira.Services
 
             try
             {
-                //await DeleteSlashCommands(DebugServerID);
+                await DeleteSlashCommands();
                 foreach (var cmd in Commands)
                 {
                     if (DebugServerID != 0)
                     {
-          
+                        
+                        Console.WriteLine("Loading Guild Commands");
                         await DisClient.Rest.CreateGuildCommand(cmd.Build(), DebugServerID);
                     }
                     else
                     {
-                        await DisClient.Rest.CreateGlobalCommand(cmd.Build());
+                        Console.WriteLine("Loading Global Commands");
+                        //await DisClient.Rest.CreateGlobalCommand(cmd.Build());
                     }
                 }
                     
@@ -78,6 +80,7 @@ namespace Sagira.Services
 
         private async Task HandleSlashCommand(SocketSlashCommand command)
         {
+            
             switch (command.Data.Name)
             {
                 case "rolls":
@@ -90,14 +93,19 @@ namespace Sagira.Services
                     await (new ItemModule(Handler, this)).RollsAsync(command, 0, true);
                     break;
             }
+            return;
         }
 
-        private async Task DeleteSlashCommands(ulong guildId)
+        private async Task DeleteSlashCommands()
         {
             //await DisClient.Rest.DeleteAllGlobalCommandsAsync();
-            var cmds = await DisClient.Rest.GetGuildApplicationCommands(guildId);
-            foreach (var cmd in cmds)
-                await cmd.DeleteAsync();
+            if (DebugServerID != 0)
+            {
+                var cmds = await DisClient.Rest.GetGuildApplicationCommands(DebugServerID);
+                foreach (var cmd in cmds)
+                    await cmd.DeleteAsync();
+            }
+
         }
 
         /// <summary>
