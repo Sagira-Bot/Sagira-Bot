@@ -22,7 +22,7 @@ namespace Sagira.Services
             _disClient = cli;
             _handler = items;
             _debugServerID = debugID;
-            _defaultTimeout = defaultTimeout ?? TimeSpan.FromSeconds(60);           
+            _defaultTimeout = defaultTimeout ?? TimeSpan.FromSeconds(120);           
         }
 
         public async Task OnClientReady()
@@ -215,7 +215,7 @@ namespace Sagira.Services
             {
                 _disClient.InteractionCreated += HandleInteraction;
 
-                var result = await Task.WhenAny(componentTask, cancelTask).ConfigureAwait(false);
+                var result = await Task.WhenAny(componentTask, cancelTask, timeoutTask).ConfigureAwait(false);
 
                 return result == componentTask
                     ? await componentTask.ConfigureAwait(false)
