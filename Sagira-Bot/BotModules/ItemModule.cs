@@ -4,56 +4,56 @@ using System.Linq;
 using Discord;
 using System.Threading.Tasks;
 using Sagira.Services;
-using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 using Discord.WebSocket;
 using System.Drawing;
+using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 
 namespace Sagira.Modules
 {
     public class ItemModule
     {
 		
-		public ItemHandler Handler;
-		public InteractionService interactions;
-		public ItemModule(ItemHandler HandlerInstance, InteractionService intr)
+		private readonly ItemHandler _handler;
+		private readonly InteractionService _interactions;
+
+		public ItemModule(ItemHandler handlerInstance, InteractionService intr)
 		{
-			Handler = HandlerInstance;
-			interactions = intr;
+			_handler = handlerInstance;
+			_interactions = intr;
 		}
 
-		public async Task RollsAsync(SocketSlashCommand command, int Year = 0, bool isCurated = false)
+		public async Task RollsAsync(SocketSlashCommand command, int year = 0, bool isCurated = false)
 		{
-			//await command.AcknowledgeAsync();
 			int gunSelection = 0;
-			string GunName = (string)command.Data.Options.First().Value;
+			string gunName = (string)command.Data.Options.First().Value;
 
-			List<ItemData> ItemList = Handler.GenerateItemList(GunName.ToLower(), Year);
-			if (ItemList == null || ItemList.Count == 0)
+			List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
+			if (itemList == null || itemList.Count == 0)
 			{
-				await command.RespondAsync($"Couldn't find{(Year != 0 ? $" Year {Year}" : "")} Weapon: {GunName}");
+				await command.RespondAsync($"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: {gunName}");
 				return;
 			}
 
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
-			if (ItemList.Count > 1)
+			if (itemList.Count > 1)
 			{
-				if (ItemList.Count < 8)
+				if (itemList.Count < 8)
 				{
 					Dictionary<Emoji, string> gunList = new Dictionary<Emoji, string>();
 					Dictionary<string, int> gunIndexes = new Dictionary<string, int>();
 					var EmbedSelection = new EmbedBuilder()
 					{
-						Title = $"Search Results for: \"{GunName}\"",
+						Title = $"Search Results for: \"{gunName}\"",
 						Description = $"Please Select Desired Gun"
 					};
-					var Components = new ComponentBuilder();
-					for (int i = 0; i < ItemList.Count; i++)
+					var options = new ComponentBuilder();
+					for (int i = 0; i < itemList.Count; i++)
 					{
-						Components.WithButton($"{ItemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i/4));
-						gunIndexes[ItemList[i].DisplayProperties.Name] = i;
+						options.WithButton($"{itemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i/4));
+						gunIndexes[itemList[i].DisplayProperties.Name] = i;
 					}
-					var msg = await command.Channel.SendMessageAsync(text:$"Search results for: \"{GunName}\" ", isTTS: false, component: Components.Build());
-					var Response = await interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id));
+					var msg = await command.Channel.SendMessageAsync(text:$"Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
+					var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id));
                     try
                     {
 						gunSelection = Int32.Parse(Response.Data.CustomId);
@@ -67,18 +67,18 @@ namespace Sagira.Modules
 				}
 				else
 				{
-					await command.RespondAsync($"{command.User.Mention} 's search for {GunName} produced too many results. Please be more specific.");
+					await command.RespondAsync($"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
 					return;
 				}
 			}
 
 			
 			//Console.WriteLine($"Selected Gun Hash: {ItemList[gunSelection].Hash}");
-			Dictionary<string, string>[] PerkDict = Handler.GeneratePerkDict(ItemList[gunSelection]);
+			Dictionary<string, string>[] PerkDict = _handler.GeneratePerkDict(itemList[gunSelection]);
 			//Rich Embed starts here -- \u200b is 0 width space
 			//DamageTypes 1 = Kinetic, 2 = Arc, 3 = Solar, 4 = Void, 6 = Stasis			
 			string ele = "Kinetic";
-			switch ((int)ItemList[gunSelection].DefaultDamageType)
+			switch ((int)itemList[gunSelection].DefaultDamageType)
 			{
 				case 1:
 					ele = "Kinetic";
@@ -99,9 +99,9 @@ namespace Sagira.Modules
 			var dColor = ColorTranslator.FromHtml(Constants.ColorDict[ele]);
 			//State 0 = Default, Regular y2 gun or random roll exotic. 1 = Non-Random Exotic. 2 = Year 1 gun. 3 = Curated of Any gun that isn't exotic. 
 			int state = 0;
-			if (ItemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !Handler.RandomExotics.ContainsKey(GunName.ToLower()))
+			if (itemList[gunSelection].Inventory.TierTypeName.ToLower() == "exotic" && !_handler.RandomExotics.ContainsKey(gunName.ToLower()))
 				state = 1;
-			else if (Year == 1 || !Handler.IsRandomRollable(ItemList[gunSelection]))
+			else if (year == 1 || !_handler.IsRandomRollable(itemList[gunSelection]))
 				state = 2;
 			else if (isCurated)
 				state = 3;
@@ -109,16 +109,16 @@ namespace Sagira.Modules
 			//Console.WriteLine($"{ItemList[gunSelection].DisplayProperties.Name} Year: {ItemList[gunSelection].Year} State: {state} ");
 			string disclaimer = $"Not all curated rolls actually drop in-game.{System.Environment.NewLine}* indicates perks that are only available on the curated roll.";
 			if (state == 1 || state == 2)
-				disclaimer = $"This version of {ItemList[gunSelection].DisplayProperties.Name} does not have random rolls, all perks are selectable.";
+				disclaimer = $"This version of {itemList[gunSelection].DisplayProperties.Name} does not have random rolls, all perks are selectable.";
 			if (state == 3)
 				disclaimer = $"Not all curated rolls actually drop in-game.";
 
 			//Initialize EmbedBuilder with our context.
 			var gunInfo = new EmbedBuilder
 			{
-				ThumbnailUrl = $"https://www.bungie.net{ItemList[gunSelection].DisplayProperties.Icon}",
-				Title = $"{ItemList[gunSelection].DisplayProperties.Name}",
-				Description = $"{ItemList[gunSelection].Inventory.TierTypeName} {ele} {ItemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine} Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
+				ThumbnailUrl = $"https://www.bungie.net{itemList[gunSelection].DisplayProperties.Icon}",
+				Title = $"{itemList[gunSelection].DisplayProperties.Name}",
+				Description = $"{itemList[gunSelection].Inventory.TierTypeName} {ele} {itemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine} Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
 				Color = (Discord.Color)dColor,
 				Footer = new EmbedFooterBuilder().WithText(disclaimer)
 			};
@@ -160,10 +160,17 @@ namespace Sagira.Modules
 					}
 				}
 			}
-			var ResourceLinks = new ComponentBuilder();
-				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("Light.gg").WithStyle(ButtonStyle.Link).WithUrl(@"https://www.light.gg/db/items/" + ItemList[gunSelection].Hash)); 
-				ResourceLinks.WithButton(new ButtonBuilder().WithLabel("D2 Gunsmith").WithStyle(ButtonStyle.Link).WithUrl(@"https://d2gunsmith.com/w/" + ItemList[gunSelection].Hash));
-			await command.RespondAsync("", false, embed: gunInfo.Build(), component: ResourceLinks.Build()); 
+			var resourceLinks = new ComponentBuilder();
+				resourceLinks.WithButton(new ButtonBuilder()
+					.WithLabel("Light.gg")
+					.WithStyle(ButtonStyle.Link)
+					.WithUrl(@"https://www.light.gg/db/items/" + itemList[gunSelection].Hash));
+				resourceLinks.WithButton(new ButtonBuilder()
+					.WithLabel("D2 Gunsmith")
+					.WithStyle(ButtonStyle.Link)
+					.WithUrl(@"https://d2gunsmith.com/w/" + itemList[gunSelection].Hash));
+
+			await command.RespondAsync("", false, embed: gunInfo.Build(), component: resourceLinks.Build()); 
 			return;
 		}
 	}	

@@ -12,52 +12,53 @@ namespace Sagira.Services
 {
     public class InteractionService
     {
-        private readonly DiscordSocketClient DisClient;
-        private readonly ItemHandler Handler;
-        private readonly TimeSpan DefaultTimeout;
-        private readonly ulong DebugServerID = 0;
-        public InteractionService(DiscordSocketClient Cli, ItemHandler Items, ulong DebugID = 0)
+        private readonly DiscordSocketClient _disClient;
+        private readonly ItemHandler _handler;
+        private readonly TimeSpan _defaultTimeout;
+        private readonly ulong _debugServerID = 0;
+
+        public InteractionService(DiscordSocketClient cli, ItemHandler items, ulong debugID = 0, TimeSpan? defaultTimeout = null)
         {
-            DisClient = Cli;
-            Handler = Items;
-            DebugServerID = DebugID;
-            DefaultTimeout = TimeSpan.FromSeconds(60);           
+            _disClient = cli;
+            _handler = items;
+            _debugServerID = debugID;
+            _defaultTimeout = defaultTimeout ?? TimeSpan.FromSeconds(60);           
         }
 
         public async Task OnClientReady()
         {           
-            List<SlashCommandBuilder> Commands = new List<SlashCommandBuilder>();
+            List<SlashCommandBuilder> commands = new List<SlashCommandBuilder>();
 
-            Commands.Add(new SlashCommandBuilder()
+            commands.Add(new SlashCommandBuilder()
                 .WithName("rolls")
                 .WithDescription("Lists all of a weapon's possible rolls")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose rolls you want to search for", required: true));
-            Commands.Add(new SlashCommandBuilder()
+            commands.Add(new SlashCommandBuilder()
                 .WithName("year1")
                 .WithDescription("Lists a weapon's static roll")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose roll you want to search for", required: true));
-            Commands.Add(new SlashCommandBuilder()
+            commands.Add(new SlashCommandBuilder()
                 .WithName("curated")
                 .WithDescription("Lists a weapon's curated roll")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", required: true));
-            Commands.Add(new SlashCommandBuilder()
+            commands.Add(new SlashCommandBuilder()
                 .WithName("botinfo")
                 .WithDescription("Lists information about this bot"));
             try
             {
                 await DeleteSlashCommands();
-                foreach (var cmd in Commands)
+                foreach (var cmd in commands)
                 {
-                    if (DebugServerID != 0)
+                    if (_debugServerID != 0)
                     {
                         
                         Console.WriteLine("Loading Guild Commands");
-                        await DisClient.Rest.CreateGuildCommand(cmd.Build(), DebugServerID);
+                        await _disClient.Rest.CreateGuildCommand(cmd.Build(), _debugServerID);
                     }
                     else
                     {
                         Console.WriteLine("Loading Global Commands");
-                        await DisClient.Rest.CreateGlobalCommand(cmd.Build());
+                        await _disClient.Rest.CreateGlobalCommand(cmd.Build());
                     }
                 }
                     
@@ -86,13 +87,13 @@ namespace Sagira.Services
             switch (command.Data.Name)
             {
                 case "rolls":
-                    await (new ItemModule(Handler, this)).RollsAsync(command);
+                    await (new ItemModule(_handler, this)).RollsAsync(command);
                     break;
                 case "year1":
-                    await (new ItemModule(Handler, this)).RollsAsync(command, 1);
+                    await (new ItemModule(_handler, this)).RollsAsync(command, 1);
                     break;
                 case "curated":
-                    await (new ItemModule(Handler, this)).RollsAsync(command, 0, true);
+                    await (new ItemModule(_handler, this)).RollsAsync(command, 0, true);
                     break;
                 case "botinfo":
                     await command.RespondAsync("This bot currently has the slash commands: rolls, year1, and curated. These commands will each pull a gun and all relevant perks based on the command used.");
@@ -104,9 +105,9 @@ namespace Sagira.Services
         private async Task DeleteSlashCommands()
         {
             //await DisClient.Rest.DeleteAllGlobalCommandsAsync();
-            if (DebugServerID != 0)
+            if (_debugServerID != 0)
             {
-                var cmds = await DisClient.Rest.GetGuildApplicationCommands(DebugServerID);
+                var cmds = await _disClient.Rest.GetGuildApplicationCommands(_debugServerID);
                 foreach (var cmd in cmds)
                     await cmd.DeleteAsync();
             }
@@ -130,7 +131,7 @@ namespace Sagira.Services
 
             var componentTask = componentSource.Task;
             var cancelTask = cancelSource.Task;
-            var timeoutTask = Task.Delay(timeout ?? DefaultTimeout);
+            var timeoutTask = Task.Delay(timeout ?? _defaultTimeout);
 
             Task CheckComponent(SocketMessageComponent comp)
             {
@@ -156,7 +157,7 @@ namespace Sagira.Services
 
             try
             {
-                DisClient.InteractionCreated += HandleInteraction;
+                _disClient.InteractionCreated += HandleInteraction;
 
                 var result = await Task.WhenAny(componentTask, cancelTask).ConfigureAwait(false);
 
@@ -166,7 +167,7 @@ namespace Sagira.Services
             }
             finally
             {
-                DisClient.InteractionCreated -= HandleInteraction;
+                _disClient.InteractionCreated -= HandleInteraction;
                 cancellationRegistration.Dispose();
             }
         }
@@ -187,7 +188,7 @@ namespace Sagira.Services
 
             var componentTask = componentSource.Task;
             var cancelTask = cancelSource.Task;
-            var timeoutTask = Task.Delay(timeout ?? DefaultTimeout);
+            var timeoutTask = Task.Delay(timeout ?? _defaultTimeout);
 
 
             Task CheckComponent(SocketInteraction intr)
@@ -212,7 +213,7 @@ namespace Sagira.Services
 
             try
             {
-                DisClient.InteractionCreated += HandleInteraction;
+                _disClient.InteractionCreated += HandleInteraction;
 
                 var result = await Task.WhenAny(componentTask, cancelTask).ConfigureAwait(false);
 
@@ -222,7 +223,7 @@ namespace Sagira.Services
             }
             finally
             {
-                DisClient.InteractionCreated -= HandleInteraction;
+                _disClient.InteractionCreated -= HandleInteraction;
                 cancellationRegistration.Dispose();
             }
         }

@@ -19,19 +19,19 @@ namespace Sagira
     /// </summary>
     class SagiraBot
     {
-        private DiscordSocketClient DisClient;
-        private CommandService CmdService;
-        private IServiceProvider DIServices;
-        private InteractionService InterServ; //Slash-Commands and the Like
-        private string Token;
-        public char Prefix;
+        private DiscordSocketClient _disClient;
+        private CommandService _cmdService;
+        private IServiceProvider _diService;
+        private InteractionService _interactionService; //Slash-Commands and the Like
+        private string _token;
+        public char CommandPrefix;
         //public static void Main(string[] args) => new SagiraBot().MainAsync().GetAwaiter().GetResult();
         public async Task RunBot()
         {
-            var Config = new SagiraConfiguration();
+            var config = new SagiraConfiguration();
             try
             {
-                await Config.Load();
+                await config.Load();
             }
             catch (Exception ex) when (ex is FileNotFoundException)
             {
@@ -40,29 +40,29 @@ namespace Sagira
                 Console.ReadLine();
                 return;
             }
-            Token = Config._discordBotToken;
-            Prefix = Config._defaultBotCommandPrefix;
-            ItemHandler Handler = new ItemHandler(Config._bungieApiKey);
+            _token = config._discordBotToken;
+            CommandPrefix = config._defaultBotCommandPrefix;
+            ItemHandler handler = new ItemHandler(config._bungieApiKey);
 
-            DisClient = new DiscordSocketClient(new DiscordSocketConfig
+            _disClient = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = LogSeverity.Debug,
                 MessageCacheSize = 50,
                 AlwaysAcknowledgeInteractions = false,
             });
-            InterServ = new InteractionService(DisClient, Handler, Config._debugServerID);
-            DisClient.InteractionCreated += InterServ.Client_InteractionCreated;
-            DisClient.Ready += InterServ.OnClientReady;
-            CmdService = new CommandService(new CommandServiceConfig
+            _interactionService = new InteractionService(_disClient, handler, config._debugServerID);
+            _disClient.InteractionCreated += _interactionService.Client_InteractionCreated;
+            _disClient.Ready += _interactionService.OnClientReady;
+            _cmdService = new CommandService(new CommandServiceConfig
             {
                 LogLevel = LogSeverity.Debug,
                 CaseSensitiveCommands = false,
             });
             
             // Subscribe the logging handler to both the client and the CommandService.
-            DisClient.Log += Log;
-            CmdService.Log += Log;
-            DIServices = (new ServiceHandler(DisClient, CmdService, InterServ, Handler)).BuildServiceProvider();
+            _disClient.Log += Log;
+            _cmdService.Log += Log;
+            _diService = (new ServiceHandler(_disClient, _cmdService, handler, _interactionService)).BuildServiceProvider();
             await MainAsync();
         }
 
@@ -96,8 +96,8 @@ namespace Sagira
             await InitCommands();
 
             // Login and connect.
-            await DisClient.LoginAsync(TokenType.Bot, Token);
-            await DisClient.StartAsync();
+            await _disClient.LoginAsync(TokenType.Bot, _token);
+            await _disClient.StartAsync();
 
             // Wait infinitely so your bot actually stays connected.
             await Task.Delay(-1);
@@ -105,27 +105,8 @@ namespace Sagira
 
         private async Task InitCommands()
         {
-            await CmdService.AddModulesAsync(Assembly.GetEntryAssembly(), DIServices);
-            DisClient.MessageReceived += HandleCommandAsync;
-        }
-
-        private async Task BuildSlashCommands()
-        {
-            var globalCommand = new SlashCommandBuilder();
-            globalCommand.WithName("rolls");
-            globalCommand.WithDescription("Pull a weapon's rolls");
-
-            try { 
-                await DisClient.Rest.CreateGlobalCommand(globalCommand.Build());
-            }
-            catch (ApplicationCommandException exception)
-            {
-                // If our command was invalid, we should catch an ApplicationCommandException. This exception contains the path of the error as well as the error message. You can serialize the Error field in the exception to get a visual of where your error is.
-                var json = JsonConvert.SerializeObject(exception.Error, Formatting.Indented);
-
-                // You can send this error somewhere or just print it to the console, for this example we're just going to print it.
-                Console.WriteLine(json);
-            }
+            await _cmdService.AddModulesAsync(Assembly.GetEntryAssembly(), _diService);
+            _disClient.MessageReceived += HandleCommandAsync;
         }
 
         private async Task HandleCommandAsync(SocketMessage arg)
@@ -135,19 +116,19 @@ namespace Sagira
             if (msg == null) return;
 
             // We don't want the bot to respond to itself or other bots.
-            if (msg.Author.Id == DisClient.CurrentUser.Id || msg.Author.IsBot) return;
+            if (msg.Author.Id == _disClient.CurrentUser.Id || msg.Author.IsBot) return;
 
             // Create a number to track where the prefix ends and the command begins
             int pos = 0;
 
-            if (msg.HasCharPrefix(Prefix, ref pos) || msg.HasMentionPrefix(DisClient.CurrentUser, ref pos))
+            if (msg.HasCharPrefix(CommandPrefix, ref pos) || msg.HasMentionPrefix(_disClient.CurrentUser, ref pos))
             {
                 // Create a Command Context.
-                var context = new SocketCommandContext(DisClient, msg);
+                var context = new SocketCommandContext(_disClient, msg);
 
                 // Execute the command. (result does not indicate a return value, 
                 // rather an object stating if the command executed successfully).
-                var result = await CmdService.ExecuteAsync(context, pos, DIServices);
+                var result = await _cmdService.ExecuteAsync(context, pos, _diService);
 
                 if (!result.IsSuccess && result.Error != CommandError.UnknownCommand)
                     await msg.Channel.SendMessageAsync(result.ErrorReason);

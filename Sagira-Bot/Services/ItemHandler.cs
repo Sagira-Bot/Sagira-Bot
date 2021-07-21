@@ -25,15 +25,17 @@ namespace Sagira.Services
     {
         readonly BungieDriver bungie; //Singleton, we just need one BungieDriver ever.
 
-        const string itemTable = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
-        const string perkSetTable = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
-        Dictionary<uint, ItemData> ItemTable;
-        Dictionary<string, ItemData> Y1WeaponTable;
-        Dictionary<string, ItemData> Y2WeaponTable;
-        Dictionary<uint, PlugSetData> PlugSetTable;
+        private const string _itemTableName = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
+        private const string _perkSetTableName = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
+        private const long trackerDisabled = 2285418970; //Hash for Tracker Socket
+        private const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
 
-        const long trackerDisabled = 2285418970; //Hash for Tracker Socket
-        const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
+        private Dictionary<uint, ItemData> _itemTable;
+        private Dictionary<string, ItemData> _staticWeaponTable;
+        private Dictionary<string, ItemData> _randomWeaponTable;
+        private Dictionary<uint, PlugSetData> _plugSetTable;
+
+        
 
         public readonly Dictionary<string, string> RandomExotics = new Dictionary<string, string>()
         {
@@ -44,15 +46,15 @@ namespace Sagira.Services
         public ItemHandler(string bungieApiKey = "")
         {
             bungie = new BungieDriver(bungieApiKey); //init
-            ItemTable = new();
-            Y1WeaponTable = new();
-            Y2WeaponTable = new();
-            PlugSetTable = new();
+            _itemTable = new();
+            _staticWeaponTable = new();
+            _randomWeaponTable = new();
+            _plugSetTable = new();
             PullDbTables().GetAwaiter().GetResult();
-            Console.WriteLine($"Item Table Entries: {ItemTable.Count}{Environment.NewLine}" +
-                $"Y1 Weapon Table Entries: {Y1WeaponTable.Count}{Environment.NewLine}" +
-                $"Y2 Weapon Table Entries: {Y2WeaponTable.Count}{Environment.NewLine}" +
-                $"Plug Set Table Entries: {PlugSetTable.Count}{Environment.NewLine}");
+            Console.WriteLine($"Item Table Entries: {_itemTable.Count}{Environment.NewLine}" +
+                $"Y1 Weapon Table Entries: {_staticWeaponTable.Count}{Environment.NewLine}" +
+                $"Y2 Weapon Table Entries: {_randomWeaponTable.Count}{Environment.NewLine}" +
+                $"Plug Set Table Entries: {_plugSetTable.Count}{Environment.NewLine}");
         }
 
         /// <summary>
@@ -63,10 +65,10 @@ namespace Sagira.Services
         {
             await bungie.PullManifest();
 
-            ItemTable = JsonSerializer.Deserialize<Dictionary<uint, ItemData>>(await bungie.GetTable(itemTable));
-            PlugSetTable = JsonSerializer.Deserialize<Dictionary<uint, PlugSetData>>(await bungie.GetTable(perkSetTable));
+            _itemTable = JsonSerializer.Deserialize<Dictionary<uint, ItemData>>(await bungie.GetTable(_itemTableName));
+            _plugSetTable = JsonSerializer.Deserialize<Dictionary<uint, PlugSetData>>(await bungie.GetTable(_perkSetTableName));
 
-            foreach (KeyValuePair<uint, ItemData> pair in ItemTable)
+            foreach (KeyValuePair<uint, ItemData> pair in _itemTable)
             {
                 var currentItem = pair.Value;
                 if (IsWeapon(currentItem) && currentItem.CollectibleHash != null) //Weapons only + weapons with collectibles (aka every real instance of a weapon. See: VOG weapons that have 2x weapon entries)
@@ -74,11 +76,11 @@ namespace Sagira.Services
                     //Only random roll weapons have randomizedPlugSetHash, so label them as y2.
                     if (IsRandomRollable(currentItem))
                     {
-                        Y2WeaponTable[currentItem.DisplayProperties.Name.ToLower()] = currentItem;
+                        _randomWeaponTable[currentItem.DisplayProperties.Name.ToLower()] = currentItem;
                     }
                     else
                     {
-                        Y1WeaponTable[currentItem.DisplayProperties.Name.ToLower()] = currentItem;
+                        _staticWeaponTable[currentItem.DisplayProperties.Name.ToLower()] = currentItem;
                     }
                 }
             }
@@ -91,16 +93,16 @@ namespace Sagira.Services
         /// For substring matches y1 and y2 both get added (with y2 priority) if year = 0
         /// </summary>
         /// <param name="itemName">Name of the item to search for</param>
-        /// <param name="Year">0,1,2. 0 = both, 1 = Static rolls, 2 = Random rolls</param>
+        /// <param name="year">0,1,2. 0 = both, 1 = Static rolls, 2 = Random rolls</param>
         /// <returns></returns>
-        public List<ItemData> PullItemListByName(string itemName, int Year = 0)
+        public List<ItemData> PullItemListByName(string itemName, int year = 0)
         {
             List<ItemData> resultingItems = new List<ItemData>();
             Dictionary<string, ItemData> resultQueue = new Dictionary<string, ItemData>();
             string searchTarget = itemName.ToLower();
-            if (Year == 0 || Year == 2)
+            if (year == 0 || year == 2)
             {
-                foreach (KeyValuePair<string, ItemData> pair in Y2WeaponTable)
+                foreach (KeyValuePair<string, ItemData> pair in _randomWeaponTable)
                 {
                     if (pair.Key.Contains(searchTarget))
                     {
@@ -108,9 +110,9 @@ namespace Sagira.Services
                     }
                 }
             }
-            if (Year == 0 || Year == 1)
+            if (year == 0 || year == 1)
             {
-                foreach (KeyValuePair<string, ItemData> pair in Y1WeaponTable)
+                foreach (KeyValuePair<string, ItemData> pair in _staticWeaponTable)
                 {
                     if (pair.Key.Contains(searchTarget))
                     {
@@ -133,13 +135,13 @@ namespace Sagira.Services
         /// If nothing is found, return an empty list. If something is found, return it all.
         /// </summary>
         /// <param name="itemName">Name of the item you're searching for, can be partial</param>
-        /// <param name="Year">Desired year of the item. Default is 0, but can pass in 1.</param>
+        /// <param name="year">Desired year of the item. Default is 0, but can pass in 1.</param>
         /// <returns></returns>
-        public List<ItemData> GenerateItemList(string itemName, int Year = 0)
+        public List<ItemData> GenerateItemList(string itemName, int year = 0)
         {
             try
             {
-                List<ItemData> items = PullItemListByName(itemName, Year);
+                List<ItemData> items = PullItemListByName(itemName, year);
                 if (items.Count == 0)
                 {
                     Console.WriteLine($"Could not find desired item: {itemName}");
@@ -243,7 +245,7 @@ namespace Sagira.Services
         public PlugSetData PullPlugFromHashes(uint? hash, bool Debug = false)
         {
             if (hash != null)
-                return PlugSetTable[(uint)hash];
+                return _plugSetTable[(uint)hash];
             else
                 return null;
         }
@@ -251,7 +253,7 @@ namespace Sagira.Services
         public ItemData PullItemFromHash(uint? hash, bool Debug = false)
         {
             if (hash != null)
-                return ItemTable[(uint)hash];
+                return _itemTable[(uint)hash];
             else
                 return null;
         }
@@ -262,7 +264,7 @@ namespace Sagira.Services
             foreach (var perk in plug.ReusablePlugItems)
             {
                 if (perk.CurrentlyCanRoll)
-                    perkHashes.Add(ItemTable[perk.PlugItemHash]);
+                    perkHashes.Add(_itemTable[perk.PlugItemHash]);
             }
             return perkHashes;
         }
