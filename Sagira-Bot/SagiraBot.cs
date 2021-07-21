@@ -43,20 +43,24 @@ namespace Sagira
             _token = config._discordBotToken;
             CommandPrefix = config._defaultBotCommandPrefix;
             ItemHandler handler = new ItemHandler(config._bungieApiKey);
+            TimeSpan? defaultTimeout = null;
+            if (config._defaultTimeoutSeconds != 0)
+                defaultTimeout = TimeSpan.FromSeconds(config._defaultTimeoutSeconds);
 
             _disClient = new DiscordSocketClient(new DiscordSocketConfig
             {
                 LogLevel = LogSeverity.Debug,
                 MessageCacheSize = 50,
                 AlwaysAcknowledgeInteractions = false,
-            });
-            _interactionService = new InteractionService(_disClient, handler, config._debugServerID);
+
+            }); 
+            _interactionService = new InteractionService(_disClient, handler, config._debugServerID, defaultTimeout);
             _disClient.InteractionCreated += _interactionService.Client_InteractionCreated;
             _disClient.Ready += _interactionService.OnClientReady;
             _cmdService = new CommandService(new CommandServiceConfig
             {
                 LogLevel = LogSeverity.Debug,
-                CaseSensitiveCommands = false,
+                CaseSensitiveCommands = true,
             });
             
             // Subscribe the logging handler to both the client and the CommandService.

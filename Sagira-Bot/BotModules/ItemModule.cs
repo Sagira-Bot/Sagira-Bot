@@ -24,6 +24,7 @@ namespace Sagira.Modules
 
 		public async Task RollsAsync(SocketSlashCommand command, int year = 0, bool isCurated = false)
 		{
+			await command.AcknowledgeAsync();
 			int gunSelection = 0;
 			string gunName = (string)command.Data.Options.First().Value;
 
@@ -53,7 +54,7 @@ namespace Sagira.Modules
 						gunIndexes[itemList[i].DisplayProperties.Name] = i;
 					}
 					var msg = await command.Channel.SendMessageAsync(text:$"Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
-					var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id));
+					var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id), timeout: TimeSpan.FromSeconds(60));
                     try
                     {
 						gunSelection = Int32.Parse(Response.Data.CustomId);
@@ -61,7 +62,8 @@ namespace Sagira.Modules
 					}
 					catch(Exception e)
                     {
-						await command.RespondAsync($"No search selected in time.");
+						await msg.DeleteAsync();
+						await command.RespondAsync($"No search result selected in time.");
 						return;
 					}
 				}
@@ -170,7 +172,7 @@ namespace Sagira.Modules
 					.WithStyle(ButtonStyle.Link)
 					.WithUrl(@"https://d2gunsmith.com/w/" + itemList[gunSelection].Hash));
 
-			await command.RespondAsync("", false, embed: gunInfo.Build(), component: resourceLinks.Build()); 
+			await command.FollowupAsync(new Embed[] { gunInfo.Build() }, "", false, false, default, null, null, resourceLinks.Build()); 
 			return;
 		}
 	}	

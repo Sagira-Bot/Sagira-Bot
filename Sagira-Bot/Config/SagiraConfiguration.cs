@@ -14,13 +14,16 @@ namespace Sagira
         internal string _bungieApiKey;
         internal char _defaultBotCommandPrefix;
         internal string _discordBotToken;
+        internal ulong _defaultTimeoutSeconds;
         internal ulong _debugServerID = 0;
+        
 
         public bool success = false;
         public string BungieApiKey { get => default; set => _bungieApiKey = value; }
         public char DefaultBotCommandPrefix { get => default; set => _defaultBotCommandPrefix = value; }
         public string DiscordBotToken { get => default; set => _discordBotToken = value; }
         public ulong DebugServerID { get => default; set => _debugServerID = value; }
+        public ulong DefaultTimeoutSeconds { get => default; set => _defaultTimeoutSeconds = value; }
 
         public async Task Load(string fileName = DefaultFileName)
         {
@@ -40,6 +43,7 @@ namespace Sagira
             DiscordBotToken = config._discordBotToken;
             DefaultBotCommandPrefix = config._defaultBotCommandPrefix;
             DebugServerID = config._debugServerID;
+            DefaultTimeoutSeconds = config._defaultTimeoutSeconds;
             success = true;
         }
 
