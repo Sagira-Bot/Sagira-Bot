@@ -31,7 +31,7 @@ namespace Sagira.Modules
 			List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
 			if (itemList == null || itemList.Count == 0)
 			{
-				await command.FollowupAsync(null, text: $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: {gunName}");
+				await command.FollowupAsync(null, text: $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"");
 				return;
 			}
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
