@@ -4,11 +4,9 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
 using System.Threading.Tasks;
-using Interactivity;
 using System.IO;
 using Sagira.Services;
-using Discord.Net;
-using Newtonsoft.Json;
+
 
 namespace Sagira
 {

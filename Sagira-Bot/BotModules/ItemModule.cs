@@ -53,7 +53,7 @@ namespace Sagira.Modules
 						options.WithButton($"{itemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i/4));
 						gunIndexes[itemList[i].DisplayProperties.Name] = i;
 					}
-					var msg = await command.Channel.SendMessageAsync(text:$"Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
+					var msg = await command.Channel.SendMessageAsync(text:$"{command.User.Mention} - Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
 					var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id), timeout: TimeSpan.FromSeconds(60));
                     try
                     {
@@ -120,9 +120,9 @@ namespace Sagira.Modules
 			{
 				ThumbnailUrl = $"https://www.bungie.net{itemList[gunSelection].DisplayProperties.Icon}",
 				Title = $"{itemList[gunSelection].DisplayProperties.Name}",
-				Description = $"{itemList[gunSelection].Inventory.TierTypeName} {ele} {itemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine} Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
+				Description = $"{itemList[gunSelection].Inventory.TierTypeName} {ele} {itemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine}Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
 				Color = (Discord.Color)dColor,
-				Footer = new EmbedFooterBuilder().WithText(disclaimer)
+				Footer = new EmbedFooterBuilder().WithText($"{disclaimer}")
 			};
 			//Start from 1 to skip intrinsic. Per Column create an in-line embed field with perks.
 			//Bold curated perks, and add a * after their name to indicate unrollable curated perk.
@@ -172,7 +172,7 @@ namespace Sagira.Modules
 					.WithStyle(ButtonStyle.Link)
 					.WithUrl(@"https://d2gunsmith.com/w/" + itemList[gunSelection].Hash));
 
-			await command.FollowupAsync(new Embed[] { gunInfo.Build() }, component: resourceLinks.Build()); 
+			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, component: resourceLinks.Build()); 
 			return;
 		}
 	}	
