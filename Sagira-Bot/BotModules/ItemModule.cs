@@ -34,7 +34,6 @@ namespace Sagira.Modules
 				await command.FollowupAsync(null, text: $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: {gunName}");
 				return;
 			}
-
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
 			if (itemList.Count > 1)
 			{
