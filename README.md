@@ -23,3 +23,9 @@ Fields are self explanatory, you can leave DefaultTimeoutSeconds and DebugServer
 If you leave DebugServer blank, your bot will upload global commands which will take 1 hour to process.
 To find the value for DebugServer, right click the desired server -> copy ID.
 
+# Discord Invite Link
+https://discord.com/api/oauth2/authorize?client_id=865748581981356052&permissions=242666039360&scope=applications.commands%20bot
+
+# Contact
+
+Open a github issue if you've found a reproducable bug. Or contact Zein#0007 on Discord.
