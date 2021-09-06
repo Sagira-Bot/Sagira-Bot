@@ -31,10 +31,9 @@ namespace Sagira.Modules
 			List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
 			if (itemList == null || itemList.Count == 0)
 			{
-				await command.FollowupAsync(null, text: $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: {gunName}");
+				await command.FollowupAsync($"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"");
 				return;
 			}
-
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
 			if (itemList.Count > 1)
 			{
@@ -53,7 +52,7 @@ namespace Sagira.Modules
 						options.WithButton($"{itemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i/4));
 						gunIndexes[itemList[i].DisplayProperties.Name] = i;
 					}
-					var msg = await command.Channel.SendMessageAsync(text:$"Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
+					var msg = await command.Channel.SendMessageAsync(text:$"{command.User.Mention} - Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
 					var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id), timeout: TimeSpan.FromSeconds(60));
                     try
                     {
@@ -63,13 +62,13 @@ namespace Sagira.Modules
 					catch(Exception e)
                     {
 						await msg.DeleteAsync();
-						await command.FollowupAsync(null, text: $"No search result selected in time.");
+						await command.FollowupAsync($"No search result selected in time.");
 						return;
 					}
 				}
 				else
 				{
-					await command.FollowupAsync(null, text: $"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
+					await command.FollowupAsync($"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
 					return;
 				}
 			}
@@ -114,15 +113,15 @@ namespace Sagira.Modules
 				disclaimer = $"This version of {itemList[gunSelection].DisplayProperties.Name} does not have random rolls, all perks are selectable.";
 			if (state == 3)
 				disclaimer = $"Not all curated rolls actually drop in-game.";
-
+			disclaimer += $"{System.Environment.NewLine} Bolded perks indicate curated roll.";
 			//Initialize EmbedBuilder with our context.
 			var gunInfo = new EmbedBuilder
 			{
 				ThumbnailUrl = $"https://www.bungie.net{itemList[gunSelection].DisplayProperties.Icon}",
 				Title = $"{itemList[gunSelection].DisplayProperties.Name}",
-				Description = $"{itemList[gunSelection].Inventory.TierTypeName} {ele} {itemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine} Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
+				Description = $"{itemList[gunSelection].Inventory.TierTypeName} {ele} {itemList[gunSelection].ItemTypeDisplayName} {System.Environment.NewLine}Intrinsic: {PerkDict[0].FirstOrDefault(intrin => intrin.Value.ToLower() == "intrinsic").Key}",
 				Color = (Discord.Color)dColor,
-				Footer = new EmbedFooterBuilder().WithText(disclaimer)
+				Footer = new EmbedFooterBuilder().WithText($"{disclaimer}")
 			};
 			//Start from 1 to skip intrinsic. Per Column create an in-line embed field with perks.
 			//Bold curated perks, and add a * after their name to indicate unrollable curated perk.
@@ -172,7 +171,7 @@ namespace Sagira.Modules
 					.WithStyle(ButtonStyle.Link)
 					.WithUrl(@"https://d2gunsmith.com/w/" + itemList[gunSelection].Hash));
 
-			await command.FollowupAsync(new Embed[] { gunInfo.Build() }, component: resourceLinks.Build()); 
+			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, component: resourceLinks.Build()); 
 			return;
 		}
 	}	
