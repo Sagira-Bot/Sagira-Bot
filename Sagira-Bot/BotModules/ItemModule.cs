@@ -31,7 +31,7 @@ namespace Sagira.Modules
 			List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
 			if (itemList == null || itemList.Count == 0)
 			{
-				await command.FollowupAsync(null, text: $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"");
+				await command.FollowupAsync($"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"");
 				return;
 			}
 			//Handle Vague Searches -- Tell user to react to pick the gun they meant.
@@ -62,13 +62,13 @@ namespace Sagira.Modules
 					catch(Exception e)
                     {
 						await msg.DeleteAsync();
-						await command.FollowupAsync(null, text: $"No search result selected in time.");
+						await command.FollowupAsync($"No search result selected in time.");
 						return;
 					}
 				}
 				else
 				{
-					await command.FollowupAsync(null, text: $"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
+					await command.FollowupAsync($"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
 					return;
 				}
 			}
@@ -113,7 +113,7 @@ namespace Sagira.Modules
 				disclaimer = $"This version of {itemList[gunSelection].DisplayProperties.Name} does not have random rolls, all perks are selectable.";
 			if (state == 3)
 				disclaimer = $"Not all curated rolls actually drop in-game.";
-
+			disclaimer += $"{System.Environment.NewLine} Bolded perks indicate curated roll.";
 			//Initialize EmbedBuilder with our context.
 			var gunInfo = new EmbedBuilder
 			{
