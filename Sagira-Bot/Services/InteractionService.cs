@@ -42,6 +42,14 @@ namespace Sagira.Services
                 .WithDescription("Lists a weapon's curated roll")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", required: true));
             commands.Add(new SlashCommandBuilder()
+                .WithName("stats")
+                .WithDescription("Lists a weapon's stats")
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose stat you want to search for", required: true));
+            commands.Add(new SlashCommandBuilder()
+                .WithName("compare-stats")
+                .WithDescription("Compares two weapon's stats")
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose stat you want to search for", required: true));
+            commands.Add(new SlashCommandBuilder()
                 .WithName("botinfo")
                 .WithDescription("Lists information about this bot"));
             try
@@ -58,7 +66,7 @@ namespace Sagira.Services
                     else
                     {
                         Console.WriteLine("Loading Global Commands");
-                        await _disClient.Rest.CreateGlobalCommand(cmd.Build());
+                        //await _disClient.Rest.CreateGlobalCommand(cmd.Build());
                     }
                 }
                     
@@ -95,8 +103,14 @@ namespace Sagira.Services
                 case "curated":
                     await (new ItemModule(_handler, this)).RollsAsync(command, 0, true);
                     break;
+                case "stats":
+                    await (new ItemModule(_handler, this)).StatsAsync(command);
+                    break;
+                case "compare-stats":
+                    await (new ItemModule(_handler, this)).CompareStatsAsync(command);
+                    break;
                 case "botinfo":
-                    await command.RespondAsync("This bot currently has the slash commands: rolls, year1, and curated. These commands will each pull a gun and all relevant perks based on the command used.");
+                    await command.RespondAsync("This bot currently has the slash commands: stats, rolls, year1, and curated. These commands will each pull a gun and all relevant perks or stats based on the command used.");
                     break;
             }
             return;

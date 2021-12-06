@@ -6,6 +6,9 @@ using System.Linq;
 using ItemData = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemDefinition;
 using PlugSetData = BungieSharper.Entities.Destiny.Definitions.Sockets.DestinyPlugSetDefinition;
 using SocketEntry = BungieSharper.Entities.Destiny.Definitions.DestinyItemSocketEntryDefinition;
+using ItemStatDefinition = BungieSharper.Entities.Destiny.Definitions.DestinyInventoryItemStatDefinition;
+using StatDefinition = BungieSharper.Entities.Destiny.Definitions.DestinyStatDefinition;
+using Sagira.Util;
 
 namespace Sagira.Services
 {
@@ -27,6 +30,8 @@ namespace Sagira.Services
 
         private const string _itemTableName = "DestinyInventoryItemDefinition"; //Main db we'll be using to pull an item's manifest entry. Results from here are all JSON.
         private const string _perkSetTableName = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
+        private const string _statDefinitionTableName = "DestinyStatDefinition";
+
         private const long trackerDisabled = 2285418970; //Hash for Tracker Socket
         private const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
 
@@ -34,6 +39,7 @@ namespace Sagira.Services
         private Dictionary<string, ItemData> _staticWeaponTable;
         private Dictionary<string, ItemData> _randomWeaponTable;
         private Dictionary<uint, PlugSetData> _plugSetTable;
+        private Dictionary<uint, StatDefinition> _statDefinitionTable;
 
         
 
@@ -50,11 +56,14 @@ namespace Sagira.Services
             _staticWeaponTable = new();
             _randomWeaponTable = new();
             _plugSetTable = new();
+            _statDefinitionTable = new();
+
             PullDbTables().GetAwaiter().GetResult();
             Console.WriteLine($"Item Table Entries: {_itemTable.Count}{Environment.NewLine}" +
                 $"Y1 Weapon Table Entries: {_staticWeaponTable.Count}{Environment.NewLine}" +
                 $"Y2 Weapon Table Entries: {_randomWeaponTable.Count}{Environment.NewLine}" +
-                $"Plug Set Table Entries: {_plugSetTable.Count}{Environment.NewLine}");
+                $"Plug Set Table Entries: {_plugSetTable.Count}{Environment.NewLine}" +
+                $"Stat Definition Table Entries: {_statDefinitionTable.Count}{Environment.NewLine}");
         }
 
         /// <summary>
@@ -67,6 +76,7 @@ namespace Sagira.Services
 
             _itemTable = JsonSerializer.Deserialize<Dictionary<uint, ItemData>>(await bungie.GetTable(_itemTableName));
             _plugSetTable = JsonSerializer.Deserialize<Dictionary<uint, PlugSetData>>(await bungie.GetTable(_perkSetTableName));
+            _statDefinitionTable = JsonSerializer.Deserialize<Dictionary<uint, StatDefinition>>(await bungie.GetTable(_statDefinitionTableName));
 
             foreach (KeyValuePair<uint, ItemData> pair in _itemTable)
             {
@@ -104,7 +114,7 @@ namespace Sagira.Services
             {
                 foreach (KeyValuePair<string, ItemData> pair in _randomWeaponTable)
                 {
-                    if (pair.Key.Contains(searchTarget))
+                    if (CommonUtils.RemoveSpecialCharacters(pair.Key).Contains(CommonUtils.RemoveSpecialCharacters(searchTarget)))
                     {
                         resultQueue[pair.Key] = pair.Value;
                     }
@@ -114,7 +124,7 @@ namespace Sagira.Services
             {
                 foreach (KeyValuePair<string, ItemData> pair in _staticWeaponTable)
                 {
-                    if (pair.Key.Contains(searchTarget))
+                    if (CommonUtils.RemoveSpecialCharacters(pair.Key).Contains(CommonUtils.RemoveSpecialCharacters(searchTarget)))
                     {
                         if (!resultQueue.ContainsKey(pair.Key))
                             resultQueue[pair.Key] = pair.Value; //Implication here is if the key already exists, it must be a y2 version. If a y2 version exists, it must be prioritized if Year != 1
@@ -159,7 +169,17 @@ namespace Sagira.Services
                 return new List<ItemData>();
             }
         }
-
+        public string GetIntrinsicOnly(ItemData item)
+        {
+            foreach(SocketEntry socket in item.Sockets.SocketEntries)
+            {
+                if(socket.SocketTypeHash == intrinsicSocket)
+                {
+                    return PullItemFromHash(socket.SingleInitialItemHash).DisplayProperties.Name;
+                }
+            }
+            return "";
+        }
         /// <summary>
         /// Takes an Item and generates a formatted Dictionary array of perks with Key: Perk Name, Value: Perk State. Each index of the array represents a column of the weapon (column 0 is intrinsic)
         /// Perk State refers to 1 of 4 stats: Intrinsic Perk (intrinsic), Curated Non-Rollable (curated0), Curated Rollable (curated1),  Random only (random)
@@ -242,6 +262,51 @@ namespace Sagira.Services
             return perkDict;
         }
 
+        public Dictionary<string, int> GenerateStatDict(ItemData item)
+        {
+            Dictionary<string, int> statDict = new Dictionary<string, int>();
+            Dictionary<uint, ItemStatDefinition> statContainer = item.Stats.Stats;
+            foreach(var entry in statContainer)
+            {
+                string name = _statDefinitionTable[entry.Key].DisplayProperties.Name;
+                if (!name.ToLower().Contains("attack") && !name.ToLower().Contains("power") && name.Length > 0)
+                {
+                    string entryKey = _statDefinitionTable[entry.Key].DisplayProperties.Name;
+                    if(entryKey.ToLower().Equals("recoil direction"))
+                    {
+                        entryKey = "Recoil";
+                    }
+                    if (entryKey.ToLower().Contains("rounds"))
+                    {
+                        entryKey = "RPM";
+                    }
+                    statDict.Add(entryKey, entry.Value.Value);
+                }
+            }
+            return statDict;
+        }
+
+        public string DetermineRecoilDirection(int Recoil)
+        {
+            string direction = "";
+
+            double calculatedValue = Math.Round(Math.Sin((Recoil + 5) * (2 * Math.PI) / 20) * (100 - Recoil));
+            if(calculatedValue > 0)
+            {
+                direction = "Tends Right";
+            }
+            else if(calculatedValue < 0)
+            {
+                direction = "Tends Left";
+            }
+            else
+            {
+                direction = "Tends Verical";
+            }
+            Console.WriteLine($"Calculated Direction Numerically: {calculatedValue}");
+            return direction;
+        }
+
         public PlugSetData PullPlugFromHashes(uint? hash, bool Debug = false)
         {
             if (hash != null)
@@ -254,6 +319,14 @@ namespace Sagira.Services
         {
             if (hash != null)
                 return _itemTable[(uint)hash];
+            else
+                return null;
+        }
+
+        public StatDefinition PullStatFromHash(uint? hash, bool Debug = false)
+        {
+            if (hash != null)
+                return _statDefinitionTable[(uint)hash];
             else
                 return null;
         }
