@@ -49,18 +49,10 @@ namespace Sagira.Services
                 .WithName("curated")
                 .WithDescription("Lists a weapon's curated roll")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", required: true));
-            commands.Add(new SlashCommandBuilder()
-                .WithName("stats")
-                .WithDescription("Lists a weapon's stats")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The weapon whose stat you want to search for", required: true));
-            commands.Add(new SlashCommandBuilder()
-                .WithName("compare-stats")
-                .WithDescription("Compares two weapon's stats")
-                .AddOption("first-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true)
-                .AddOption("second-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true));
-            commands.Add(new SlashCommandBuilder()
+          /*  commands.Add(new SlashCommandBuilder()
                 .WithName("botinfo")
                 .WithDescription("Lists information about this bot"));
+          */
 
             try
             {
