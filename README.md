@@ -11,6 +11,10 @@ This is a very impromptu summary of usage, but once you get the bot online after
 
 /curated [ITEM NAME] will do the same as above but the logic is shifted to prioritize curated rolls for y2 items (and falls back on y1 items)
 
+/stats [ITEM NAME] will do the same as /rolls but print stats instead
+
+/compare-stats [ITEM-ONE] [ITEM-TWO] will take 2 items and compare their stats, printing the differences in an embed.
+
 # Workflow
 * BungieDriver -> Pulls Manifest DB Tables
 * ItemHandler -> Your Table handler. Will act as a service to parse item tables as needed.
