@@ -22,10 +22,9 @@ namespace Sagira.Modules
 			_interactions = intr;
 		}
 
-		private async Task<ItemData> SelectItem(SocketSlashCommand command, int year = 0, bool isCurated = false)
+		private async Task<ItemData> SelectItem(SocketSlashCommand command, string gunName, int year = 0, bool isCurated = false)
         {
             int gunSelection = 0;
-            string gunName = (string)command.Data.Options.First().Value;
 
             List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
             if (itemList == null || itemList.Count == 0)
@@ -133,7 +132,8 @@ namespace Sagira.Modules
 		{
 			await command.DeferAsync();
 			string gunName = (string)command.Data.Options.First().Value;
-			ItemData selectedItem = SelectItem(command, year, isCurated).Result;
+			ItemData selectedItem = SelectItem(command, gunName, year, isCurated).Result;
+
 			if(selectedItem == null)
             {
 				return;
@@ -210,11 +210,11 @@ namespace Sagira.Modules
 		
 		public async Task StatsAsync(SocketSlashCommand command)
         {
-			string[] hiddenStatArray = new[] { "Aim Assistance", "Inventory Size", "Zoom", "Recoil", "Bounce Direction" };
+			string[] hiddenStatArray = new[] { "Aim Assistance", "Inventory Size", "Zoom", "Recoil", "Recoil Direction" };
 			await command.DeferAsync();
 
 			string gunName = (string)command.Data.Options.First().Value;
-			ItemData selectedItem = SelectItem(command).Result;
+			ItemData selectedItem = SelectItem(command, gunName).Result;
 			Dictionary<string, int> statDict =_handler.GenerateStatDict(selectedItem);
 
 			EmbedBuilder gunInfo = initEmbed(selectedItem, "Stats will vary based on selected perks and masterwork").Result;
@@ -234,7 +234,7 @@ namespace Sagira.Modules
 			}
             if (statDict.ContainsKey("Recoil"))
             {
-				hiddenStats += $"Bounce Direction = {_handler.DetermineRecoilDirection(statDict["Recoil"])}";
+				hiddenStats += $"Recoil Direction = {_handler.DetermineRecoilDirection(statDict["Recoil"])}";
 			}
 
 			gunInfo.AddField(new EmbedFieldBuilder().WithName("Weapon Stats").WithValue(weaponStats).WithIsInline(true));
@@ -247,38 +247,69 @@ namespace Sagira.Modules
 
 		public async Task CompareStatsAsync(SocketSlashCommand command)
 		{
-			string[] hiddenStatArray = new[] { "Aim Assistance", "Inventory Size", "Zoom", "Recoil", "Bounce Direction" };
 			await command.DeferAsync();
 
-			string gunName = (string)command.Data.Options.First().Value;
-			ItemData selectedItem = SelectItem(command).Result;
-			Dictionary<string, int> statDict = _handler.GenerateStatDict(selectedItem);
+			string[] hiddenStatArray = new[] { "Aim Assistance", "Inventory Size", "Zoom", "Recoil", "Recoil Direction" };
+			string gunNameA = (string)command.Data.Options.ElementAt(0).Value;
+			string gunNameB = (string)command.Data.Options.ElementAt(1).Value;
+			Console.WriteLine($"Gun A: {gunNameA} |||| Gun B: {gunNameB}");
 
-			EmbedBuilder gunInfo = initEmbed(selectedItem, "Stats will vary based on selected perks and masterwork").Result;
+			ItemData selectedItemA = SelectItem(command, gunNameA).Result;
+			ItemData selectedItemB = SelectItem(command, gunNameB).Result;
 
-			string weaponStats = "";
-			string hiddenStats = "";
-			foreach (var entry in statDict)
+			gunNameA = selectedItemA.DisplayProperties.Name;
+			gunNameB = selectedItemB.DisplayProperties.Name;
+
+			if (selectedItemA.ItemTypeDisplayName != selectedItemB.ItemTypeDisplayName)
 			{
-				if (!hiddenStatArray.Contains(entry.Key))
-				{
-					weaponStats += $"{entry.Key} = {entry.Value} {System.Environment.NewLine}";
-				}
-				else
-				{
-					hiddenStats += $"{entry.Key} = {entry.Value} {System.Environment.NewLine}";
-				}
-			}
-			if (statDict.ContainsKey("Recoil"))
-			{
-				hiddenStats += $"Bounce Direction = {_handler.DetermineRecoilDirection(statDict["Recoil"])}";
+				await command.FollowupAsync($"Cannot compare items of different types: **{gunNameA}** is a **{selectedItemA.ItemTypeDisplayName}** and **{gunNameB}** is a **{selectedItemB.ItemTypeDisplayName}**");
+				return;
 			}
 
-			gunInfo.AddField(new EmbedFieldBuilder().WithName("Weapon Stats").WithValue(weaponStats).WithIsInline(true));
-			gunInfo.AddField(new EmbedFieldBuilder().WithName("Hidden Stats").WithValue(hiddenStats).WithIsInline(true));
+			Dictionary<string, int> statDictA = _handler.GenerateStatDict(selectedItemA);
+			Dictionary<string, int> statDictB = _handler.GenerateStatDict(selectedItemB);
+             
+			EmbedBuilder gunInfo = new EmbedBuilder
+			{
+				ThumbnailUrl = $"https://www.bungie.net{selectedItemA.DisplayProperties.Icon}",
+				Title = $"{selectedItemA.DisplayProperties.Name} vs {selectedItemB.DisplayProperties.Name}",
+				Footer = new EmbedFooterBuilder().WithText($"Stats will vary based on selected perks and masterwork")
+			};
 
-			ComponentBuilder resourceLinks = buildLinkButtons(selectedItem.Hash).Result;
-			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, component: resourceLinks.Build());
+			Console.WriteLine("A");
+			foreach (var entry in statDictA)
+			{
+				string statName = entry.Key;
+				int statValueA = entry.Value;
+				int statValueB = statDictB[statName];
+				int statDifference = statValueA - statValueB;
+
+				if(statDifference == 0) { continue; }
+
+				string isolatedPrints = $"({gunNameA} = {statValueA} | {gunNameB} = {statValueB})";
+				string comparison = "";
+				if(statDifference > 0)
+                {
+					comparison = $"{gunNameA} has **{statDifference} more {statName}** than {gunNameB}";
+                }
+				else if(statDifference < 0)
+                {
+					comparison = $"{gunNameA} has **{Math.Abs(statDifference)} less {statName}** than {gunNameB}";
+				}
+				gunInfo.AddField(new EmbedFieldBuilder().WithName(statName).WithValue($"{comparison}{System.Environment.NewLine}{isolatedPrints}{System.Environment.NewLine}").WithIsInline(false));
+			}
+
+			if (statDictA.ContainsKey("Recoil"))
+			{
+				string recoilDirA = _handler.DetermineRecoilDirection(statDictA["Recoil"]);
+				string recoilDirB = _handler.DetermineRecoilDirection(statDictB["Recoil"]);
+				if (!recoilDirA.Equals(recoilDirB))
+                {
+					gunInfo.AddField(new EmbedFieldBuilder().WithName("Recoil Direction").WithValue($"(**{gunNameA}** {recoilDirA} | **{gunNameB}** {recoilDirB}){System.Environment.NewLine}").WithIsInline(false));
+				}
+			}
+
+			await command.FollowupAsync(embeds: new[] { gunInfo.Build() });
 			return;
 		}
 	}	

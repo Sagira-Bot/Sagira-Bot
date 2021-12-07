@@ -28,7 +28,15 @@ namespace Sagira.Services
         public async Task OnClientReady()
         {           
             List<SlashCommandBuilder> commands = new List<SlashCommandBuilder>();
-
+            commands.Add(new SlashCommandBuilder()
+                .WithName("compare-stats")
+                .WithDescription("Compares two weapon's stats")
+                .AddOption("first-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true)
+                .AddOption("second-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true));
+            commands.Add(new SlashCommandBuilder()
+                .WithName("stats")
+                .WithDescription("Lists a weapon's stats")
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The weapon whose stat you want to search for", required: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("rolls")
                 .WithDescription("Lists all of a weapon's possible rolls")
@@ -44,17 +52,19 @@ namespace Sagira.Services
             commands.Add(new SlashCommandBuilder()
                 .WithName("stats")
                 .WithDescription("Lists a weapon's stats")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose stat you want to search for", required: true));
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The weapon whose stat you want to search for", required: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("compare-stats")
                 .WithDescription("Compares two weapon's stats")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose stat you want to search for", required: true));
+                .AddOption("first-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true)
+                .AddOption("second-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("botinfo")
                 .WithDescription("Lists information about this bot"));
+
             try
             {
-                await DeleteSlashCommands();
+                //await DeleteSlashCommands();
                 foreach (var cmd in commands)
                 {
                     if (_debugServerID != 0)
@@ -66,7 +76,7 @@ namespace Sagira.Services
                     else
                     {
                         Console.WriteLine("Loading Global Commands");
-                        //await _disClient.Rest.CreateGlobalCommand(cmd.Build());
+                        await _disClient.Rest.CreateGlobalCommand(cmd.Build());
                     }
                 }
                     
