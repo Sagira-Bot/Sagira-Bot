@@ -28,7 +28,15 @@ namespace Sagira.Services
         public async Task OnClientReady()
         {           
             List<SlashCommandBuilder> commands = new List<SlashCommandBuilder>();
-
+            commands.Add(new SlashCommandBuilder()
+                .WithName("compare-stats")
+                .WithDescription("Compares two weapon's stats")
+                .AddOption("first-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true)
+                .AddOption("second-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true));
+            commands.Add(new SlashCommandBuilder()
+                .WithName("stats")
+                .WithDescription("Lists a weapon's stats")
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The weapon whose stat you want to search for", required: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("rolls")
                 .WithDescription("Lists all of a weapon's possible rolls")
@@ -41,12 +49,14 @@ namespace Sagira.Services
                 .WithName("curated")
                 .WithDescription("Lists a weapon's curated roll")
                 .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", required: true));
-            commands.Add(new SlashCommandBuilder()
+          /*  commands.Add(new SlashCommandBuilder()
                 .WithName("botinfo")
                 .WithDescription("Lists information about this bot"));
+          */
+
             try
             {
-                await DeleteSlashCommands();
+                //await DeleteSlashCommands();
                 foreach (var cmd in commands)
                 {
                     if (_debugServerID != 0)
@@ -95,8 +105,14 @@ namespace Sagira.Services
                 case "curated":
                     await (new ItemModule(_handler, this)).RollsAsync(command, 0, true);
                     break;
+                case "stats":
+                    await (new ItemModule(_handler, this)).StatsAsync(command);
+                    break;
+                case "compare-stats":
+                    await (new ItemModule(_handler, this)).CompareStatsAsync(command);
+                    break;
                 case "botinfo":
-                    await command.RespondAsync("This bot currently has the slash commands: rolls, year1, and curated. These commands will each pull a gun and all relevant perks based on the command used.");
+                    await command.RespondAsync("This bot currently has the slash commands: stats, rolls, year1, and curated. These commands will each pull a gun and all relevant perks or stats based on the command used.");
                     break;
             }
             return;
