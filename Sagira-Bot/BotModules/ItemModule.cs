@@ -194,7 +194,7 @@ namespace Sagira.Modules
 					}
 					if (reply != "")
 					{
-						gunInfo.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
+						gunInfo.AddField(new EmbedFieldBuilder().WithName(i != 5 ? $"Column {i}" : "Origin Perk").WithValue(reply).WithIsInline(true));
 						if (i % 2 == 0)
 						{
 							gunInfo.AddField(new EmbedFieldBuilder().WithName(Constants.BlankChar).WithValue(Constants.BlankChar).WithIsInline(false));

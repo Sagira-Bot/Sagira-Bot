@@ -34,6 +34,7 @@ namespace Sagira.Services
 
         private const long trackerDisabled = 2285418970; //Hash for Tracker Socket
         private const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
+        private const long originSocket = 3993098925; //Hash for origin perk
 
         private Dictionary<uint, ItemData> _itemTable;
         private Dictionary<string, ItemData> _staticWeaponTable;
@@ -193,7 +194,7 @@ namespace Sagira.Services
         /// <returns></returns>
         public Dictionary<string, string>[] GeneratePerkDict(ItemData item)
         {
-            Dictionary<string, string>[] perkDict = new Dictionary<string, string>[5]; //Intrinsic + 4 columns max
+            Dictionary<string, string>[] perkDict = new Dictionary<string, string>[6]; //Intrinsic + 4 random perk columns + 1 origin column max
             int curIdx = 0;
             foreach (SocketEntry socket in item.Sockets.SocketEntries)
             {
@@ -210,12 +211,12 @@ namespace Sagira.Services
                             List<ItemData> StaticPerks = PullPerksInSet(PullPlugFromHashes(socket.ReusablePlugSetHash));
                             foreach (ItemData perkData in StaticPerks)
                             {
-                                perkDict[curIdx][perkData.DisplayProperties.Name] = socket.SocketTypeHash == intrinsicSocket ? "intrinsic" : "curated0";
+                                perkDict[curIdx][perkData.DisplayProperties.Name] = DetermineCuratedSocketType(socket.SocketTypeHash);
                             }
                         }
                         else if (socket.SingleInitialItemHash != 0)
                         {
-                            perkDict[curIdx][PullItemFromHash(socket.SingleInitialItemHash).DisplayProperties.Name] = socket.SocketTypeHash == intrinsicSocket ? "intrinsic" : "curated0";
+                            perkDict[curIdx][PullItemFromHash(socket.SingleInitialItemHash).DisplayProperties.Name] = DetermineCuratedSocketType(socket.SocketTypeHash);
                         }
                     }
                     else if (socket.ReusablePlugItems.Count() > 0)
@@ -262,6 +263,18 @@ namespace Sagira.Services
             return perkDict;
         }
 
+        private string DetermineCuratedSocketType (long socketHash)
+        {
+            if(socketHash == intrinsicSocket)
+            {
+                return "intrinsic";
+            }
+            //if(socketHash == originSocket)
+            //{
+            //    return "origin";
+            //}
+            return "curated0";
+        }
         public Dictionary<string, int> GenerateStatDict(ItemData item)
         {
             Dictionary<string, int> statDict = new Dictionary<string, int>();
