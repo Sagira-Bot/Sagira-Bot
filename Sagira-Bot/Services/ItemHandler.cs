@@ -32,9 +32,10 @@ namespace Sagira.Services
         private const string _perkSetTableName = "DestinyPlugSetDefinition"; //Main db we'll use to translate every item's perk plug set hash "randomizedPlugSetHash" (combo of perks a gun can roll in a column) into an array of perks
         private const string _statDefinitionTableName = "DestinyStatDefinition";
 
-        private const long trackerDisabled = 2285418970; //Hash for Tracker Socket
+        //private const long trackerDisabled = 2285418970; //Hash for Tracker Socket
+        //private const long killTracker = 2302094943; //Hash for Memento Kill Trackers
+        //private const long originSocket = 3993098925; //Hash for origin perk
         private const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
-        private const long originSocket = 3993098925; //Hash for origin perk
 
         private Dictionary<uint, ItemData> _itemTable;
         private Dictionary<string, ItemData> _staticWeaponTable;
@@ -200,7 +201,8 @@ namespace Sagira.Services
             {
                 int PlugSrc = (int)socket.PlugSources;
                 //We look for curated first. If we match any curated perks in random section we know that we can roll these curated perks. Else we keep our default mark of Curated-Unrollable (curated0)
-                if ((PlugSrc == 2 || PlugSrc == 6 || PlugSrc == 0) && socket.SingleInitialItemHash != trackerDisabled)
+                Console.WriteLine();
+                if ((PlugSrc == 2 || PlugSrc == 6 || PlugSrc == 0) && isValidSocketHash(socket.SingleInitialItemHash))
                 {
                     //Curated perks are either SingleInitialItemHash(y1+2), ReusablePlugSetHash(y1), or ReusablePlugItems(y2).
                     perkDict[curIdx] = new Dictionary<string, string>();
@@ -263,6 +265,20 @@ namespace Sagira.Services
             return perkDict;
         }
 
+        private bool isValidSocketHash(uint hash)
+        {
+            
+            if(!_itemTable.ContainsKey(hash) || _itemTable[hash]== null)
+            {
+                return false;
+            }
+            ItemData curItem = _itemTable[hash];
+            if (curItem.DisplayProperties.Name.ToLower().Contains("tracker") && String.IsNullOrEmpty(curItem.ItemTypeDisplayName))
+            {
+                return false;
+            }
+            return true;
+        }
         private string DetermineCuratedSocketType (long socketHash)
         {
             if(socketHash == intrinsicSocket)
