@@ -80,20 +80,55 @@ namespace Sagira.Services
             _plugSetTable = JsonSerializer.Deserialize<Dictionary<uint, PlugSetData>>(await bungie.GetTable(_perkSetTableName));
             _statDefinitionTable = JsonSerializer.Deserialize<Dictionary<uint, StatDefinition>>(await bungie.GetTable(_statDefinitionTableName));
 
-            foreach (KeyValuePair<uint, ItemData> pair in _itemTable)
+            Dictionary<uint, ItemData> noCollectibleDict = new();
+
+            foreach (uint key in _itemTable.Keys)
             {
-                var currentItem = pair.Value;
-                if (IsWeapon(currentItem) && currentItem.CollectibleHash != null) //Weapons only + weapons with collectibles (aka every real instance of a weapon. See: VOG weapons that have 2x weapon entries)
+                ItemData currentItem = _itemTable[key];
+                if (IsWeapon(currentItem)) 
                 {
-                    //Only random roll weapons have randomizedPlugSetHash, so label them as y2.
-                    if (IsRandomRollable(currentItem))
+                    if(currentItem.CollectibleHash != null) //Prioritize weapons with collectibles
                     {
-                        _randomWeaponTable[currentItem.DisplayProperties.Name.ToLower()] = currentItem;
+                        processItem(currentItem);
                     }
                     else
                     {
-                        _staticWeaponTable[currentItem.DisplayProperties.Name.ToLower()] = currentItem;
+                        noCollectibleDict.Add(key, currentItem);
                     }
+                }
+            }
+            //fallback for no-collectible items -- i.e items hidden for future reveals
+            foreach (uint key in noCollectibleDict.Keys)
+            {
+                 processItem(_itemTable[key]);
+            }
+
+            //trim blank stats
+            foreach(uint key in _statDefinitionTable.Keys)
+            {
+                if(_statDefinitionTable[key].DisplayProperties.Name == "")
+                {
+                    _statDefinitionTable.Remove(key);
+                }
+            }
+        }
+
+        private void processItem(ItemData currentItem)
+        {
+            string lowerItemName = currentItem.DisplayProperties.Name.ToLower();
+            //Don't overwrite the previously prioritized weapons
+            if (IsRandomRollable(currentItem))
+            {
+                if (!_randomWeaponTable.ContainsKey(lowerItemName))
+                {
+                    _randomWeaponTable[lowerItemName] = currentItem;
+                }
+            }
+            else
+            {
+                if (!_staticWeaponTable.ContainsKey(lowerItemName))
+                {
+                    _staticWeaponTable[lowerItemName] = currentItem;
                 }
             }
         }
@@ -202,7 +237,7 @@ namespace Sagira.Services
                 int PlugSrc = (int)socket.PlugSources;
                 //We look for curated first. If we match any curated perks in random section we know that we can roll these curated perks. Else we keep our default mark of Curated-Unrollable (curated0)
                 Console.WriteLine();
-                if ((PlugSrc == 2 || PlugSrc == 6 || PlugSrc == 0) && isValidSocketHash(socket.SingleInitialItemHash))
+                if ((PlugSrc == 2 || PlugSrc == 6 || PlugSrc == 0) && (socket.SingleInitialItemHash == 0 || isValidSocketHash(socket.SingleInitialItemHash)))
                 {
                     //Curated perks are either SingleInitialItemHash(y1+2), ReusablePlugSetHash(y1), or ReusablePlugItems(y2).
                     perkDict[curIdx] = new Dictionary<string, string>();
@@ -251,14 +286,26 @@ namespace Sagira.Services
                     curIdx++;
                 }
             }
+            //Piggy back off debugging to handle duplicate enhanced traits
             for (int i = 0; i < perkDict.Length; i++)
             {
                 if (perkDict[i] != null)
                 {
                     Console.WriteLine($"Column {i + 1}:");
-                    foreach (KeyValuePair<string, string> pair in perkDict[i])
+                    foreach (string key in perkDict[i].Keys)
                     {
-                        Console.WriteLine($"{pair.Key} - {pair.Value}");
+                        Console.WriteLine($"{key} - {perkDict[i][key]}");
+                        int enhancedIndex = -1;
+                        //Check if perk has enhanced in its name
+                        if((enhancedIndex = key.ToLower().IndexOf("enhanced")) > -1)
+                        {
+                            //Check if non-enhanced version is part of perk set
+                            if (perkDict[i].ContainsKey(key.Remove(enhancedIndex).Trim(' ')))
+                            {
+                                //if so remove it
+                                perkDict[i].Remove(key);
+                            }
+                        }
                     }
                 }
             }
@@ -268,7 +315,7 @@ namespace Sagira.Services
         private bool isValidSocketHash(uint hash)
         {
             
-            if(!_itemTable.ContainsKey(hash) || _itemTable[hash]== null)
+            if(!_itemTable.ContainsKey(hash) || _itemTable[hash] == null)
             {
                 return false;
             }
@@ -383,15 +430,7 @@ namespace Sagira.Services
 
         public bool IsWeapon(ItemData item)
         {
-            if (item.TraitIds != null)
-            {
-                foreach (var trait in item.TraitIds)
-                {
-                    if (trait == "item_type.weapon")
-                        return true;
-                }
-            }
-            return false;
+            return item.ItemType == BungieSharper.Entities.Destiny.DestinyItemType.Weapon;
         }
 
     }
