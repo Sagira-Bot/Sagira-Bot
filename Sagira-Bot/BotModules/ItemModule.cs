@@ -155,12 +155,24 @@ namespace Sagira.Modules
 
 			//Console.WriteLine($"{ItemList[gunSelection].DisplayProperties.Name} Year: {ItemList[gunSelection].Year} State: {state} ");
 			string disclaimer = $"Not all curated rolls actually drop in-game.{System.Environment.NewLine}* indicates perks that are only available on the curated roll.";
-			if (state == 1 || state == 2)
-				disclaimer = $"This version of {selectedItem.DisplayProperties.Name} does not have random rolls, all perks are selectable.";
-			if (state == 3)
-				disclaimer = $"Not all curated rolls actually drop in-game.";
-			disclaimer += $"{System.Environment.NewLine} Bolded perks indicate curated roll.";
 
+			switch (state)
+            {
+				case 1:
+					disclaimer = "";
+					break;
+				case 2:
+					disclaimer = $"This version of {selectedItem.DisplayProperties.Name} does not have random rolls.";
+					break;
+				case 3:
+					disclaimer = $"Not all curated rolls actually drop in-game.";
+					break;	
+			}
+			
+			if (state != 1)
+			{
+				disclaimer += $"{System.Environment.NewLine}Bolded perks indicate curated roll.";
+			}
 			//Initialize EmbedBuilder with our context.
 			EmbedBuilder gunInfo = initEmbed(selectedItem, disclaimer).Result;
 
@@ -194,7 +206,7 @@ namespace Sagira.Modules
 					}
 					if (reply != "")
 					{
-						gunInfo.AddField(new EmbedFieldBuilder().WithName($"Column {i}").WithValue(reply).WithIsInline(true));
+						gunInfo.AddField(new EmbedFieldBuilder().WithName(i != 5 ? $"Column {i}" : "Origin Perk").WithValue(reply).WithIsInline(true));
 						if (i % 2 == 0)
 						{
 							gunInfo.AddField(new EmbedFieldBuilder().WithName(Constants.BlankChar).WithValue(Constants.BlankChar).WithIsInline(false));
