@@ -36,6 +36,7 @@ namespace Sagira.Services
         //private const long killTracker = 2302094943; //Hash for Memento Kill Trackers
         //private const long originSocket = 3993098925; //Hash for origin perk
         private const long intrinsicSocket = 3956125808; //Hash for Intrinsic Perk
+        private const long originTraitHash = 2208937614; //Hash for origin trait
 
         private Dictionary<uint, ItemData> _itemTable;
         private Dictionary<string, ItemData> _staticWeaponTable;
@@ -122,6 +123,13 @@ namespace Sagira.Services
                 if (!_randomWeaponTable.ContainsKey(lowerItemName))
                 {
                     _randomWeaponTable[lowerItemName] = currentItem;
+                } 
+                else
+                {
+                    if((hasOriginTrait(currentItem) && !hasOriginTrait(_randomWeaponTable[lowerItemName])) || currentItem.Sockets.SocketEntries.Count() > _randomWeaponTable[lowerItemName].Sockets.SocketEntries.Count())
+                    {
+                        _randomWeaponTable[lowerItemName] = currentItem;
+                    }
                 }
             }
             else
@@ -129,6 +137,13 @@ namespace Sagira.Services
                 if (!_staticWeaponTable.ContainsKey(lowerItemName))
                 {
                     _staticWeaponTable[lowerItemName] = currentItem;
+                }
+                else
+                {
+                    if ((hasOriginTrait(currentItem) && !hasOriginTrait(_staticWeaponTable[lowerItemName])) || currentItem.Sockets.SocketEntries.Count() > _staticWeaponTable[lowerItemName].Sockets.SocketEntries.Count())
+                    {
+                        _staticWeaponTable[lowerItemName] = currentItem;
+                    }
                 }
             }
         }
@@ -431,6 +446,18 @@ namespace Sagira.Services
         public bool IsWeapon(ItemData item)
         {
             return item.ItemType == BungieSharper.Entities.Destiny.DestinyItemType.Weapon;
+        }
+
+        public bool hasOriginTrait(ItemData item)
+        {
+            foreach(SocketEntry socket in item.Sockets.SocketEntries)
+            {
+                if(socket.SocketTypeHash == originTraitHash)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
     }
