@@ -149,11 +149,12 @@ namespace Sagira.Services
             var cancelTask = cancelSource.Task;
             var timeoutTask = Task.Delay(timeout ?? _defaultTimeout);
 
-            Task CheckComponent(SocketMessageComponent comp)
+            async Task<Task> CheckComponent(SocketMessageComponent comp)
             {
                 if (CompFilter.Invoke(comp))
                 {
                     componentSource.SetResult(comp);
+                    await comp.DeferAsync();
                 }
 
                 return Task.CompletedTask;
