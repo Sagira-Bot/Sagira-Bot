@@ -29,7 +29,10 @@ namespace Sagira.Modules
             List<ItemData> itemList = _handler.GenerateItemList(gunName.ToLower(), year);
             if (itemList == null || itemList.Count == 0)
             {
-                await command.FollowupAsync($"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"");
+				await command.ModifyOriginalResponseAsync((msg) =>
+				{
+					msg.Content = $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"";
+				});
                 return null;
             }
             //Handle Vague Searches -- Tell user to react to pick the gun they meant.
@@ -50,23 +53,36 @@ namespace Sagira.Modules
                         options.WithButton($"{itemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i / 4));
                         gunIndexes[itemList[i].DisplayProperties.Name] = i;
                     }
-                    var msg = await command.Channel.SendMessageAsync(text: $"{command.User.Mention} - Search results for: \"{gunName}\" ", isTTS: false, components: options.Build());
-                    var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id), timeout: TimeSpan.FromSeconds(60));
-                    try
+					await command.ModifyOriginalResponseAsync((msg) =>
+					{
+						msg.Content = $"{command.User.Mention} - Search results for: \"{gunName}\"";
+						msg.Components = options.Build();
+					});
+                    var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == command.GetOriginalResponseAsync().Result.Id), timeout: TimeSpan.FromSeconds(15));
+					await command.ModifyOriginalResponseAsync((msg) =>
+					{
+						msg.Components = null;
+						msg.Content = "Processing";
+					});
+					try
                     {
                         gunSelection = Int32.Parse(Response.Data.CustomId);
-                        await msg.DeleteAsync();
-                    }
+					}
                     catch (Exception e)
                     {
-                        await msg.DeleteAsync();
-                        await command.FollowupAsync($"No search result selected in time.");
+						await command.ModifyOriginalResponseAsync((msg) =>
+						{
+							msg.Content = $"No search result selected in time. Exception: {e}";
+						});
                         return null;
                     }
-                }
+				}
                 else
                 {
-                    await command.FollowupAsync($"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.");
+					await command.ModifyOriginalResponseAsync((msg) =>
+					{
+						msg.Content = $"{command.User.Mention} 's search for {gunName} produced too many results. Please be more specific.";
+					});
                     return null;
                 }
             }
@@ -130,7 +146,8 @@ namespace Sagira.Modules
 		}
 		public async Task RollsAsync(SocketSlashCommand command, int year = 0, bool isCurated = false)
 		{
-			await command.DeferAsync();
+			await command.RespondAsync("Processing");
+
 			string gunName = (string)command.Data.Options.First().Value;
 			ItemData selectedItem = SelectItem(command, gunName, year, isCurated).Result;
 
@@ -216,7 +233,13 @@ namespace Sagira.Modules
 			}
 
 			ComponentBuilder resourceLinks = buildLinkButtons(selectedItem.Hash).Result;
-			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, components: resourceLinks.Build()); 
+			
+			await command.ModifyOriginalResponseAsync((msg) =>
+			{
+				msg.Content = null;
+				msg.Components = resourceLinks.Build();
+				msg.Embed = gunInfo.Build();
+			});
 			return;
 		}
 		
@@ -253,8 +276,12 @@ namespace Sagira.Modules
 			gunInfo.AddField(new EmbedFieldBuilder().WithName("Hidden Stats").WithValue(hiddenStats).WithIsInline(true));
 
 			ComponentBuilder resourceLinks = buildLinkButtons(selectedItem.Hash).Result;
-			MessageComponent msgComponent = resourceLinks.Build();
-			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, components: msgComponent);
+			await command.ModifyOriginalResponseAsync((msg) =>
+			{
+				msg.Content = null;
+				msg.Components = resourceLinks.Build();
+				msg.Embed = gunInfo.Build();
+			});
 			return;
 		}
 
@@ -275,7 +302,11 @@ namespace Sagira.Modules
 
 			if (selectedItemA.ItemTypeDisplayName != selectedItemB.ItemTypeDisplayName)
 			{
-				await command.FollowupAsync($"Cannot compare items of different types: **{gunNameA}** is a **{selectedItemA.ItemTypeDisplayName}** and **{gunNameB}** is a **{selectedItemB.ItemTypeDisplayName}**");
+				await command.ModifyOriginalResponseAsync((msg) =>
+				{
+					msg.Content = $"Cannot compare items of different types: **{gunNameA}** is a **{selectedItemA.ItemTypeDisplayName}** and **{gunNameB}** is a **{selectedItemB.ItemTypeDisplayName}**";
+					msg.Components = null;
+				});
 				return;
 			}
 
@@ -321,8 +352,12 @@ namespace Sagira.Modules
 					gunInfo.AddField(new EmbedFieldBuilder().WithName("Recoil Direction").WithValue($"(**{gunNameA}** {recoilDirA} | **{gunNameB}** {recoilDirB}){System.Environment.NewLine}").WithIsInline(false));
 				}
 			}
-
-			await command.FollowupAsync(embeds: new[] { gunInfo.Build() });
+			await command.ModifyOriginalResponseAsync((msg) =>
+			{
+				msg.Content = null;
+				msg.Components = null;
+				msg.Embed = gunInfo.Build();
+			});
 			return;
 		}
 	}	
