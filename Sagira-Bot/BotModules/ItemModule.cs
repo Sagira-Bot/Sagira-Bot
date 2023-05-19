@@ -31,7 +31,7 @@ namespace Sagira.Modules
             {
 				await command.ModifyOriginalResponseAsync((msg) =>
 				{
-					msg.Content = $"Couldn't find{(year != 0 ? $" Year {year}" : "")} Weapon: \"{gunName}\"";
+					msg.Content = $"Could not find: \"{gunName}\"";
 				});
                 return null;
             }
@@ -245,7 +245,6 @@ namespace Sagira.Modules
 		
 		public async Task StatsAsync(SocketSlashCommand command)
         {
-			string[] hiddenStatArray = new[] { "Aim Assistance", "Inventory Size", "Zoom", "Recoil", "Recoil Direction" };
 			await command.DeferAsync();
 
 			string gunName = (string)command.Data.Options.First().Value;
@@ -255,25 +254,16 @@ namespace Sagira.Modules
 			EmbedBuilder gunInfo = initEmbed(selectedItem, "Stats will vary based on selected perks and masterwork").Result;
 
 			string weaponStats = "";
-			string hiddenStats = "";
 			foreach (var entry in statDict)
             {
-                if (!hiddenStatArray.Contains(entry.Key))
-                {
-					weaponStats += $"{entry.Key} = {entry.Value} {System.Environment.NewLine}";
-				}
-                else
-                {
-					hiddenStats += $"{entry.Key} = {entry.Value} {System.Environment.NewLine}";
-				}
+				weaponStats += $"{entry.Key} = {entry.Value} {System.Environment.NewLine}";
 			}
             if (statDict.ContainsKey("Recoil"))
             {
-				hiddenStats += $"Recoil Direction = {_handler.DetermineRecoilDirection(statDict["Recoil"])}";
+				weaponStats += $"Recoil Direction = {_handler.DetermineRecoilDirection(statDict["Recoil"])}";
 			}
 
 			gunInfo.AddField(new EmbedFieldBuilder().WithName("Weapon Stats").WithValue(weaponStats).WithIsInline(true));
-			gunInfo.AddField(new EmbedFieldBuilder().WithName("Hidden Stats").WithValue(hiddenStats).WithIsInline(true));
 
 			ComponentBuilder resourceLinks = buildLinkButtons(selectedItem.Hash).Result;
 			await command.ModifyOriginalResponseAsync((msg) =>
@@ -289,7 +279,6 @@ namespace Sagira.Modules
 		{
 			await command.DeferAsync();
 
-			string[] hiddenStatArray = new[] { "Aim Assistance", "Inventory Size", "Zoom", "Recoil", "Recoil Direction" };
 			string gunNameA = (string)command.Data.Options.ElementAt(0).Value;
 			string gunNameB = (string)command.Data.Options.ElementAt(1).Value;
 			Console.WriteLine($"Gun A: {gunNameA} |||| Gun B: {gunNameB}");
@@ -325,6 +314,10 @@ namespace Sagira.Modules
 			{
 				string statName = entry.Key;
 				int statValueA = entry.Value;
+                if (!statDictB.ContainsKey(statName))
+                {
+					continue;
+                }
 				int statValueB = statDictB[statName];
 				int statDifference = statValueA - statValueB;
 
