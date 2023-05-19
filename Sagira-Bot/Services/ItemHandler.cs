@@ -359,6 +359,10 @@ namespace Sagira.Services
             Dictionary<uint, ItemStatDefinition> statContainer = item.Stats.Stats;
             foreach(var entry in statContainer)
             {
+                if (!_statDefinitionTable.ContainsKey(entry.Key))
+                {
+                    continue;
+                }
                 string name = _statDefinitionTable[entry.Key].DisplayProperties.Name;
                 if (!name.ToLower().Contains("attack") && !name.ToLower().Contains("power") && name.Length > 0)
                 {

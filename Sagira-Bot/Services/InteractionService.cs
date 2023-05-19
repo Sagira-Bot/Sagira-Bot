@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Discord.Net;
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using System;
@@ -7,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Sagira.Modules;
 using System.Threading;
+using Discord.Net;
 
 namespace Sagira.Services
 {
@@ -31,24 +31,24 @@ namespace Sagira.Services
             commands.Add(new SlashCommandBuilder()
                 .WithName("compare-stats")
                 .WithDescription("Compares two weapon's stats")
-                .AddOption("first-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true)
-                .AddOption("second-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", required: true));
+                .AddOption("first-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", isRequired: true)
+                .AddOption("second-weapon", ApplicationCommandOptionType.String, "One of two weapons you want to compare the stats of", isRequired: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("stats")
                 .WithDescription("Lists a weapon's stats")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The weapon whose stat you want to search for", required: true));
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The weapon whose stat you want to search for", isRequired: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("rolls")
                 .WithDescription("Lists all of a weapon's possible rolls")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose rolls you want to search for", required: true));
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose rolls you want to search for", isRequired: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("year1")
                 .WithDescription("Lists a weapon's static roll")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose roll you want to search for", required: true));
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose roll you want to search for", isRequired: true));
             commands.Add(new SlashCommandBuilder()
                 .WithName("curated")
                 .WithDescription("Lists a weapon's curated roll")
-                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", required: true));
+                .AddOption("weapon-name", ApplicationCommandOptionType.String, "The gun whose curated roll you want to search for", isRequired: true));
           /*  commands.Add(new SlashCommandBuilder()
                 .WithName("botinfo")
                 .WithDescription("Lists information about this bot"));
@@ -73,9 +73,9 @@ namespace Sagira.Services
                 }
                     
             }
-            catch (ApplicationCommandException exception)
+            catch (HttpException exception)
             {
-                var json = JsonConvert.SerializeObject(exception.Error, Formatting.Indented);
+                var json = JsonConvert.SerializeObject(exception.HttpCode, Formatting.Indented);
                 Console.WriteLine(json);
             }
         }

@@ -50,7 +50,7 @@ namespace Sagira.Modules
                         options.WithButton($"{itemList[i].DisplayProperties.Name}", $"{i}", ButtonStyle.Primary, row: (i / 4));
                         gunIndexes[itemList[i].DisplayProperties.Name] = i;
                     }
-                    var msg = await command.Channel.SendMessageAsync(text: $"{command.User.Mention} - Search results for: \"{gunName}\" ", isTTS: false, component: options.Build());
+                    var msg = await command.Channel.SendMessageAsync(text: $"{command.User.Mention} - Search results for: \"{gunName}\" ", isTTS: false, components: options.Build());
                     var Response = await _interactions.NextButtonAsync(InteractionFilter: (x => x.User.Id == command.User.Id), CompFilter: (x => x.Message.Id == msg.Id), timeout: TimeSpan.FromSeconds(60));
                     try
                     {
@@ -216,7 +216,7 @@ namespace Sagira.Modules
 			}
 
 			ComponentBuilder resourceLinks = buildLinkButtons(selectedItem.Hash).Result;
-			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, component: resourceLinks.Build()); 
+			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, components: resourceLinks.Build()); 
 			return;
 		}
 		
@@ -253,7 +253,8 @@ namespace Sagira.Modules
 			gunInfo.AddField(new EmbedFieldBuilder().WithName("Hidden Stats").WithValue(hiddenStats).WithIsInline(true));
 
 			ComponentBuilder resourceLinks = buildLinkButtons(selectedItem.Hash).Result;
-			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, component: resourceLinks.Build());
+			MessageComponent msgComponent = resourceLinks.Build();
+			await command.FollowupAsync(embeds: new[] { gunInfo.Build() }, components: msgComponent);
 			return;
 		}
 

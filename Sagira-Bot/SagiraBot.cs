@@ -49,7 +49,6 @@ namespace Sagira
             {
                 LogLevel = LogSeverity.Debug,
                 MessageCacheSize = 50,
-                AlwaysAcknowledgeInteractions = false,
 
             }); 
             _interactionService = new InteractionService(_disClient, handler, config._debugServerID, defaultTimeout);
